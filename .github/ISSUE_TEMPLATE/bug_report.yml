@@ -1,0 +1,34 @@
+name: Bug report
+description: Something doesn't work, or a save/Pokémon came out wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! **Don't attach ROMs.** Only attach a save file if you're OK with it being public (saves contain your trainer name and ID).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: game
+    attributes:
+      label: Game(s) involved
+      placeholder: e.g. Platinum (USA) → Emerald (USA)
+  - type: input
+    id: emulator
+    attributes:
+      label: Emulator and device
+      placeholder: e.g. melonDS on Android 13 (Ayn Thor)
+  - type: input
+    id: version
+    attributes:
+      label: rhome version or commit
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, logs, or steps to reproduce.

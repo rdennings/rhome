@@ -1,0 +1,23 @@
+name: Feature idea
+description: Suggest something rhome should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [docs/PLAN.md](https://github.com/rdennings/rhome/blob/main/docs/PLAN.md) first; it may already be planned for a later milestone. For open-ended ideas, a Discussion may fit better.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the situation or the problem, not just the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could rhome help?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds you've tried

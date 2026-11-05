@@ -1,0 +1,17 @@
+# Normalize line endings in the repo; check out with the platform's native endings
+* text=auto
+
+*.cs      text diff=csharp
+*.axaml   text
+*.csproj  text
+*.sln     text eol=crlf
+*.md      text
+*.py      text diff=python
+*.sh      text eol=lf
+
+# Save files and other game data are binary
+*.sav     binary
+*.srm     binary
+*.dsv     binary
+*.pk[0-9] binary
+*.png     binary

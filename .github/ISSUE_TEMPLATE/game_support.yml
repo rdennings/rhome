@@ -1,0 +1,41 @@
+name: Game / emulator support
+description: Report test results, save locations, or quirks for a game or emulator
+labels: ["game-support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to share in-game test results or how an emulator stores saves. **Don't attach ROMs.**
+  - type: input
+    id: game
+    attributes:
+      label: Game and region
+      placeholder: e.g. HeartGold (USA)
+    validations:
+      required: true
+  - type: input
+    id: emulator
+    attributes:
+      label: Emulator, version, and platform
+      placeholder: e.g. RetroArch 1.19 (melonDS DS core) on Linux / Steam Deck
+    validations:
+      required: true
+  - type: input
+    id: save_path
+    attributes:
+      label: Where the save file lives
+      placeholder: e.g. ~/.config/retroarch/saves/
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: In-game checks (if you tested a moved Pokémon)
+      options:
+        - label: Appears in the box/party
+        - label: Summary screen looks right (stats, moves, OT, ribbons)
+        - label: Registered as caught/owned in the Pokédex
+        - label: Survives saving and reloading the game
+        - label: Can battle, evolve, and trade normally
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes and quirks

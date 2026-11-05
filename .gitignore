@@ -1,0 +1,90 @@
+# ---------------------------------------------------------------
+# Never commit ROMs, BIOS files, or personal saves (see CONTRIBUTING.md)
+# ---------------------------------------------------------------
+*.gb
+*.gbc
+*.gba
+*.nds
+*.dsi
+*.3ds
+*.cia
+*.cci
+*.cxi
+*.nsp
+*.xci
+*.nsz
+*.xcz
+*.zip
+*.7z
+*.rar
+*.bin
+*.bios
+
+*.sav
+*.srm
+*.dsv
+*.ml1
+*.ml2
+*.state
+*.state[0-9]*
+# Approved test saves made for testing live in fixtures/ and are added explicitly:
+#   git add -f fixtures/<file>
+
+# ---------------------------------------------------------------
+# .NET
+# ---------------------------------------------------------------
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+*.userprefs
+*.rsuser
+.vs/
+TestResults/
+*.trx
+*.coverage
+coverage*.json
+coverage*.xml
+*.nupkg
+*.snupkg
+project.lock.json
+
+# Rider / VS Code
+.idea/
+*.sln.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ---------------------------------------------------------------
+# Android
+# ---------------------------------------------------------------
+*.apk
+*.aab
+*.keystore
+*.jks
+local.properties
+
+# ---------------------------------------------------------------
+# Python (prototypes/)
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---------------------------------------------------------------
+# OS / editor
+# ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Secrets
+.env
+.env.*
+*.pem
+google-services.json
+GoogleService-Info.plist
