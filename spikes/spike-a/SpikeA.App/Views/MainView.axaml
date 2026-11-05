@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SpikeA.App.Views.MainView">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Top" Spacing="8">
+            <TextBlock Text="rhome · spike A" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock x:Name="InfoText" TextWrapping="Wrap" Opacity="0.75" />
+            <Button x:Name="OpenButton" Content="Open save…" />
+        </StackPanel>
+        <ScrollViewer Margin="0,12,0,0">
+            <SelectableTextBlock x:Name="ReportText"
+                                 FontFamily="Menlo, Consolas, DejaVu Sans Mono, monospace"
+                                 FontSize="13" TextWrapping="NoWrap" />
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

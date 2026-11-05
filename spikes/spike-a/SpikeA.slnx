@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SpikeA.Report/SpikeA.Report.csproj" />
+  <Project Path="SpikeA.Cli/SpikeA.Cli.csproj" />
+  <Project Path="SpikeA.App/SpikeA.App.csproj" />
+  <Project Path="SpikeA.Desktop/SpikeA.Desktop.csproj" />
+  <Project Path="SpikeA.Android/SpikeA.Android.csproj" />
+</Solution>
