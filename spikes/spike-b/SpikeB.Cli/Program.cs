@@ -1,28 +1,49 @@
 using SpikeB.Core;
 
-// save-scan <emulator> <folder> [state.json]
-// Runs the same scan the Android app does, on a plain folder (e.g. one pulled off the device with adb).
-// emulator: melonds | retroarch | eden
+// save-scan [--check] <emulator> <folder> [<emulator> <folder> ...] [state.json]
+// Runs the same scan the Android app does, on plain folders (e.g. ones pulled off the device with adb).
+// --check looks up only the saves in state.json (what the app does on launch) instead of listing folders.
+// emulator: melonds | melonds-roms | retroarch | eden
 
-if (args.Length < 2 || EmulatorProfile.All.FirstOrDefault(p => p.Key == args[0]) is not { } profile)
+var keys = string.Join('|', EmulatorProfile.All.Select(p => p.Key));
+bool check = args.Length > 0 && args[0] == "--check";
+if (check)
+    args = args[1..];
+if (args.Length < 2)
+    return Usage();
+
+var sources = new List<(EmulatorProfile, ISaveFolder)>();
+int i = 0;
+for (; i + 1 < args.Length; i += 2)
 {
-    Console.Error.WriteLine($"usage: save-scan <{string.Join('|', EmulatorProfile.All.Select(p => p.Key))}> <folder> [state.json]");
-    return 2;
+    if (EmulatorProfile.All.FirstOrDefault(p => p.Key == args[i]) is not { } profile)
+        return Usage();
+    sources.Add((profile, new LocalSaveFolder(args[i + 1])));
 }
 
-var statePath = args.Length > 2 ? args[2] : null;
+var statePath = i < args.Length ? args[i] : null;
 var state = statePath is null ? new ScanState() : ScanState.Load(statePath);
-var result = SaveScanner.Scan([(profile, new LocalSaveFolder(args[1]))], state);
+var result = check ? SaveScanner.Check(sources, state) : SaveScanner.Scan(sources, state);
 if (statePath is not null)
     state.Save(statePath);
 
 foreach (var s in result.Saves)
-    Console.WriteLine($"{Mark(s.Status)} {s.Game,-24} {s.Trainer,-10} {s.PlayTime,7}  {s.Entry.RelativePath}");
+{
+    Console.WriteLine($"{Mark(s.Status)} {s.Emulator.Key,-12} {s.Game,-24} {s.Trainer,-10} {s.PlayTime,7}  {s.Entry.RelativePath}");
+    if (s.Note is not null)
+        Console.WriteLine($"    note: {s.Note}");
+}
 Console.WriteLine($"\n{result.Saves.Count} Pokémon saves · {result.CandidateFiles} save files · {result.FilesListed} files listed " +
-                  $"· list {result.ListTime.TotalMilliseconds:F0} ms · read {result.FilesRead} in {result.ReadTime.TotalMilliseconds:F0} ms");
+                  $"· {result.FilesChecked} known saves checked · list/check {result.ListTime.TotalMilliseconds:F0} ms " +
+                  $"· read {result.FilesRead} in {result.ReadTime.TotalMilliseconds:F0} ms");
 foreach (var e in result.Errors)
     Console.WriteLine($"error: {e}");
 return 0;
 
-static string Mark(SaveStatus s) => s switch { SaveStatus.New => "NEW", SaveStatus.Changed => "UPD", _ => "   " };
+int Usage()
+{
+    Console.Error.WriteLine($"usage: save-scan [--check] <{keys}> <folder> [<emulator> <folder> ...] [state.json]");
+    return 2;
+}
 
+static string Mark(SaveStatus s) => s switch { SaveStatus.New => "NEW", SaveStatus.Changed => "UPD", _ => "   " };

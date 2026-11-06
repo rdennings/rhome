@@ -13,11 +13,15 @@ public sealed record FoundSave(
     SaveStatus Status,
     string Game,
     string Trainer,
-    string PlayTime);
+    string PlayTime,
+    string? Note = null);
 
+/// <param name="FilesListed">Files seen by listing folders (0 when every folder was only checked).</param>
+/// <param name="FilesChecked">Known saves looked up one by one, without listing their folder.</param>
 public sealed record ScanResult(
     IReadOnlyList<FoundSave> Saves,
     int FilesListed,
+    int FilesChecked,
     int CandidateFiles,
     int FilesRead,
     TimeSpan ListTime,
@@ -27,7 +31,12 @@ public sealed record ScanResult(
 /// <summary>What the last scan saw, so the next one only reads new or changed files.</summary>
 public sealed class ScanState
 {
-    public sealed record KnownFile(long Size, long LastModifiedMs, string? Game, string? Trainer, string? PlayTime);
+    /// <summary>
+    /// A save file seen before. Files that aren't Pokémon saves are kept too (Game is null), so they're
+    /// not read again, and so are empty ones, because an emulator may load an empty save over a real one.
+    /// </summary>
+    public sealed record KnownFile(long Size, long LastModifiedMs, string? Game, string? Trainer, string? PlayTime,
+        string? Name = null, string? RelativePath = null);
 
     public Dictionary<string, KnownFile> Files { get; set; } = [];
     public HashSet<string> ScannedEmulators { get; set; } = [];
@@ -47,41 +56,75 @@ public static class SaveScanner
     const long MaxSaveSize = 32 * 1024 * 1024;
 
     /// <summary>
-    /// Lists every folder, reads only files that are new or changed since <paramref name="state"/>,
-    /// and updates <paramref name="state"/> in place. Saves in a folder scanned for the first time
-    /// are reported as Unchanged, so the first launch doesn't flag everything as new.
+    /// "Scan now": lists every folder to find new saves, reads only files that are new or changed since
+    /// <paramref name="state"/>, and updates <paramref name="state"/> in place. Saves in a folder scanned
+    /// for the first time are reported as Unchanged, so the first scan doesn't flag everything as new.
     /// </summary>
-    public static ScanResult Scan(IEnumerable<(EmulatorProfile Emulator, ISaveFolder Folder)> sources, ScanState state)
+    public static ScanResult Scan(IEnumerable<(EmulatorProfile Emulator, ISaveFolder Folder)> sources, ScanState state) =>
+        Run(sources, state, listAll: true);
+
+    /// <summary>
+    /// Every launch: looks up only the saves <paramref name="state"/> already knows, one by one, so a
+    /// folder full of ROMs costs nothing. Finds changed and deleted saves, not new ones (that's
+    /// <see cref="Scan"/>). A folder that was never scanned is listed in full once.
+    /// </summary>
+    public static ScanResult Check(IEnumerable<(EmulatorProfile Emulator, ISaveFolder Folder)> sources, ScanState state) =>
+        Run(sources, state, listAll: false);
+
+    static ScanResult Run(IEnumerable<(EmulatorProfile Emulator, ISaveFolder Folder)> sources, ScanState state, bool listAll)
     {
         var saves = new List<FoundSave>();
         var errors = new List<string>();
-        var seen = new HashSet<string>();
-        var listedEmulators = new HashSet<string>();
-        int listed = 0, candidates = 0, read = 0;
+        var saveFiles = new List<(EmulatorProfile Emulator, SaveEntry Entry)>();
+        int listed = 0, checkedFiles = 0, candidates = 0, read = 0;
         var listTime = TimeSpan.Zero;
         var readTime = TimeSpan.Zero;
 
         foreach (var (emulator, folder) in sources)
         {
             bool firstScan = !state.ScannedEmulators.Contains(emulator.Key);
+            string prefix = emulator.Key + "|";
             var sw = Stopwatch.StartNew();
-            IReadOnlyList<SaveEntry> entries;
-            try { entries = folder.List(emulator.MaxDepth); }
+            var entries = new List<SaveEntry>();
+            try
+            {
+                if (listAll || firstScan)
+                {
+                    var all = folder.List(emulator.MaxDepth);
+                    listed += all.Count;
+                    entries.AddRange(all.Where(e => emulator.IsSaveFile(e.Name) && e.Size <= MaxSaveSize));
+                }
+                else
+                {
+                    // Check the folder first: if the SD card is out, every save would look deleted.
+                    if (!folder.IsAvailable())
+                    {
+                        errors.Add($"{emulator.Name}: folder not available right now; kept what we knew");
+                        KeepKnown(emulator, state, saves, saveFiles);
+                        continue;
+                    }
+                    foreach (var (key, known) in state.Files.Where(f => f.Key.StartsWith(prefix, StringComparison.Ordinal)).ToList())
+                    {
+                        checkedFiles++;
+                        var entry = folder.Find(key[prefix.Length..], known.RelativePath);
+                        if (entry is not null)
+                            entries.Add(entry);
+                    }
+                }
+            }
             catch (Exception ex)
             {
-                errors.Add($"{emulator.Name}: can't list folder ({ex.GetType().Name}: {ex.Message})");
+                errors.Add($"{emulator.Name}: can't {(listAll || firstScan ? "list folder" : "check saves")} ({ex.GetType().Name}: {ex.Message})");
+                KeepKnown(emulator, state, saves, saveFiles);
                 continue;
             }
             listTime += sw.Elapsed;
-            listed += entries.Count;
-            listedEmulators.Add(emulator.Key);
 
+            var seen = new HashSet<string>();
             foreach (var entry in entries)
             {
-                if (!emulator.IsSaveFile(entry.Name) || entry.Size <= 0 || entry.Size > MaxSaveSize)
-                    continue;
-                candidates++;
-                string key = $"{emulator.Key}|{entry.Id}";
+                saveFiles.Add((emulator, entry));
+                string key = prefix + entry.Id;
                 seen.Add(key);
                 long modified = entry.LastModified.ToUnixTimeMilliseconds();
 
@@ -90,6 +133,14 @@ public static class SaveScanner
                 if (known is not null && known.Size == entry.Size && known.LastModifiedMs == modified)
                 {
                     status = SaveStatus.Unchanged;
+                    if (known.Name is null) // state from an older version of the spike
+                        state.Files[key] = known = known with { Name = entry.Name, RelativePath = entry.RelativePath };
+                }
+                else if (entry.Size <= 0)
+                {
+                    // Nothing to read, but remember it for the "two saves for one game" check.
+                    state.Files[key] = new ScanState.KnownFile(0, modified, null, null, null, entry.Name, entry.RelativePath);
+                    continue;
                 }
                 else
                 {
@@ -109,31 +160,79 @@ public static class SaveScanner
                     state.Files[key] = known;
                 }
 
+                if (known.Size > 0)
+                    candidates++;
                 if (known.Game is not null)
                     saves.Add(new FoundSave(emulator, entry, status, known.Game, known.Trainer ?? "", known.PlayTime ?? ""));
             }
+
+            // Forget this folder's files that are gone (a full listing or a lookup didn't find them).
+            foreach (var key in state.Files.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal) && !seen.Contains(k)).ToList())
+                state.Files.Remove(key);
             state.ScannedEmulators.Add(emulator.Key);
         }
 
-        // Forget files that are gone, but only for emulators we could list this time.
-        foreach (var key in state.Files.Keys.ToList())
-        {
-            if (!seen.Contains(key) && listedEmulators.Contains(key[..key.IndexOf('|')]))
-                state.Files.Remove(key);
-        }
-
-        var ordered = saves.OrderByDescending(s => s.Status != SaveStatus.Unchanged)
+        var ordered = saves.Select(s => s with { Note = DuplicateNote(s, saveFiles) })
+                           .OrderByDescending(s => s.Status != SaveStatus.Unchanged)
                            .ThenByDescending(s => s.Entry.LastModified)
                            .ToList();
-        return new ScanResult(ordered, listed, candidates, read, listTime, readTime, errors);
+        return new ScanResult(ordered, listed, checkedFiles, candidates, read, listTime, readTime, errors);
+    }
+
+    /// <summary>When a folder can't be reached, still show the saves we knew were in it.</summary>
+    static void KeepKnown(EmulatorProfile emulator, ScanState state, List<FoundSave> saves,
+        List<(EmulatorProfile, SaveEntry)> saveFiles)
+    {
+        string prefix = emulator.Key + "|";
+        foreach (var (key, known) in state.Files.Where(f => f.Key.StartsWith(prefix, StringComparison.Ordinal)))
+        {
+            var name = known.Name ?? Path.GetFileName(key);
+            var entry = new SaveEntry(key[prefix.Length..], name, known.RelativePath ?? name, known.Size,
+                DateTimeOffset.FromUnixTimeMilliseconds(known.LastModifiedMs));
+            saveFiles.Add((emulator, entry));
+            if (known.Game is not null)
+                saves.Add(new FoundSave(emulator, entry, SaveStatus.Unchanged, known.Game, known.Trainer ?? "", known.PlayTime ?? ""));
+        }
+    }
+
+    /// <summary>
+    /// The same game can have a save in more than one of an emulator's folders (melonDS: in
+    /// Android/data and next to the ROM). Emulators name the save after the ROM, so saves with the
+    /// same name for the same emulator app, in different folders, are the same game. (Within one
+    /// folder the name says nothing: every Eden save is called "main".) Returns null when there's only one.
+    /// </summary>
+    public static string? DuplicateNote(FoundSave save, IReadOnlyList<(EmulatorProfile Emulator, SaveEntry Entry)> saveFiles)
+    {
+        string name = Path.GetFileNameWithoutExtension(save.Entry.Name);
+        var copies = saveFiles
+            .Where(f => f.Emulator.PackageName == save.Emulator.PackageName &&
+                        (f.Emulator.Key != save.Emulator.Key || f.Entry.Id == save.Entry.Id) &&
+                        string.Equals(Path.GetFileNameWithoutExtension(f.Entry.Name), name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (copies.Count < 2)
+            return null;
+
+        // The emulator decides which one it loads; when the folders don't say, guess the newest non-empty one.
+        var live = copies.OrderByDescending(f => f.Emulator.LoadPriority)
+                         .ThenByDescending(f => f.Entry.Size > 0)
+                         .ThenByDescending(f => f.Entry.LastModified)
+                         .First();
+        bool known = copies.Select(f => f.Emulator.LoadPriority).Distinct().Count() > 1;
+        string app = save.Emulator.Name.Split(' ')[0];
+        if (live.Entry.Id == save.Entry.Id && live.Emulator.Key == save.Emulator.Key)
+            return $"{copies.Count} saves for this game. {app} {(known ? "loads" : "probably loads")} this one.";
+
+        string other = live.Entry.Size == 0 ? "an empty save" : "the save";
+        return $"{copies.Count} saves for this game. {app} {(known ? "loads" : "probably loads")} {other} in " +
+               $"{live.Emulator.Where}/{live.Entry.RelativePath} instead, so changes here won't show in the game.";
     }
 
     static ScanState.KnownFile Identify(byte[] data, SaveEntry entry, long modified)
     {
         if (!SaveUtil.TryGetSaveFile(data, out var sav, entry.Name))
-            return new ScanState.KnownFile(entry.Size, modified, null, null, null);
+            return new ScanState.KnownFile(entry.Size, modified, null, null, null, entry.Name, entry.RelativePath);
         return new ScanState.KnownFile(entry.Size, modified, GameName(sav), sav.OT,
-            $"{sav.PlayedHours}:{sav.PlayedMinutes:D2}");
+            $"{sav.PlayedHours}:{sav.PlayedMinutes:D2}", entry.Name, entry.RelativePath);
     }
 
     public static string GameName(SaveFile sav)

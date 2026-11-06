@@ -8,19 +8,21 @@
         </StackPanel>
 
         <!-- Left: emulators and their folder access -->
-        <DockPanel Grid.Row="1" Grid.Column="0">
-            <TextBlock DockPanel.Dock="Top" Text="Emulators" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
-            <StackPanel DockPanel.Dock="Top" x:Name="EmulatorRows" Spacing="10" />
-            <Button DockPanel.Dock="Top" x:Name="RescanButton" Content="Scan again" Margin="0,12,0,0" />
-            <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,4" />
-            <ScrollViewer>
+        <ScrollViewer Grid.Row="1" Grid.Column="0">
+            <StackPanel>
+                <TextBlock Text="Emulators" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+                <StackPanel x:Name="EmulatorRows" Spacing="10" />
+                <TextBlock Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,4" />
                 <SelectableTextBlock x:Name="LogText" TextWrapping="Wrap" FontSize="12" Opacity="0.85" />
-            </ScrollViewer>
-        </DockPanel>
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- Right: the "My saves" list and write tests for the selected save -->
         <DockPanel Grid.Row="1" Grid.Column="2">
-            <TextBlock DockPanel.Dock="Top" x:Name="SavesHeader" Text="My saves" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Button DockPanel.Dock="Right" x:Name="RescanButton" Content="Scan now" />
+                <TextBlock x:Name="SavesHeader" Text="My saves" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
             <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
                 <TextBlock x:Name="SelectedText" TextWrapping="Wrap" Text="Tap a save to test writing it." Opacity="0.75" />
                 <WrapPanel>

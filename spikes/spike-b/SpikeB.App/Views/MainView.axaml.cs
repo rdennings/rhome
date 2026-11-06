@@ -22,7 +22,7 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         InfoText.Text = $"{Host.Platform} · .NET {Environment.Version}";
-        RescanButton.Click += (_, _) => _ = ScanAsync("manual");
+        RescanButton.Click += (_, _) => _ = ScanAsync("scan now", full: true);
         SavesList.SelectionChanged += (_, _) => UpdateSelection();
         WriteSameButton.Click += (_, _) => _ = WriteTestAsync(WriteTest.SameBytes);
         WriteMoneyButton.Click += (_, _) => _ = WriteTestAsync(WriteTest.MoneyPlusOne);
@@ -70,10 +70,10 @@ public partial class MainView : UserControl
             var e = emulator;
             button.Click += async (_, _) =>
             {
-                Log($"{e.Name}: opening the folder picker at /sdcard/{e.StoragePath}");
+                Log($"{e.Name}: opening the folder picker at {e.Where}");
                 var message = await access!.RequestAccessAsync(e);
                 Log($"{e.Name}: {message}");
-                await ScanAsync($"after {e.Name} grant");
+                await ScanAsync($"after {e.Name} grant", full: true);
             };
 
             var text = new StackPanel
@@ -94,7 +94,7 @@ public partial class MainView : UserControl
 
     // ---- Scan ------------------------------------------------------------------------------
 
-    async Task ScanAsync(string reason)
+    async Task ScanAsync(string reason, bool full = false)
     {
         if (_busy)
             return;
@@ -110,7 +110,7 @@ public partial class MainView : UserControl
             var result = await Task.Run(() =>
             {
                 var state = ScanState.Load(StatePath);
-                var r = SaveScanner.Scan(sources, state);
+                var r = full ? SaveScanner.Scan(sources, state) : SaveScanner.Check(sources, state);
                 state.Save(StatePath);
                 return r;
             });
@@ -123,7 +123,7 @@ public partial class MainView : UserControl
             int fresh = result.Saves.Count(s => s.Status != SaveStatus.Unchanged);
             SavesHeader.Text = $"My saves ({result.Saves.Count}{(fresh > 0 ? $", {fresh} new or changed" : "")})";
 
-            var summary = $"scan ({reason}): {sources.Count} folders, {result.FilesListed} files listed, " +
+            var summary = $"{(full ? "scan" : "check")} ({reason}): {sources.Count} folders, {result.FilesListed} files listed, {result.FilesChecked} known saves checked, " +
                           $"{result.CandidateFiles} save files, {result.Saves.Count} Pokémon · " +
                           $"list {result.ListTime.TotalMilliseconds:F0} ms, read {result.FilesRead} in " +
                           $"{result.ReadTime.TotalMilliseconds:F0} ms, total {total.TotalMilliseconds:F0} ms";
@@ -146,7 +146,7 @@ public partial class MainView : UserControl
     static Control SaveRow(FoundSave s)
     {
         string badge = s.Status switch { SaveStatus.New => "NEW · ", SaveStatus.Changed => "CHANGED · ", _ => "" };
-        return new StackPanel
+        var row = new StackPanel
         {
             Tag = s,
             Margin = new(0, 2),
@@ -166,6 +166,20 @@ public partial class MainView : UserControl
                 },
             },
         };
+        if (s.Note is not null)
+        {
+            bool ignored = s.Note.Contains("won't show", StringComparison.Ordinal);
+            var note = new TextBlock
+            {
+                Text = (ignored ? "⚠ " : "") + s.Note,
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+            };
+            if (ignored)
+                note.Foreground = Brushes.Orange;
+            row.Children.Add(note);
+        }
+        return row;
     }
 
     void WriteScanReport(string summary, ScanResult result)
@@ -173,7 +187,11 @@ public partial class MainView : UserControl
         var sb = new StringBuilder();
         sb.Append($"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {Host.Platform}\n{summary}\n\n");
         foreach (var s in result.Saves)
-            sb.Append($"{s.Status,-9} {s.Emulator.Key,-9} {s.Game,-26} {s.Trainer,-10} {s.PlayTime,7}  {s.Entry.RelativePath}\n");
+        {
+            sb.Append($"{s.Status,-9} {s.Emulator.Key,-12} {s.Game,-26} {s.Trainer,-10} {s.PlayTime,7}  {s.Entry.RelativePath}\n");
+            if (s.Note is not null)
+                sb.Append($"{"",10}note: {s.Note}\n");
+        }
         foreach (var e in result.Errors)
             sb.Append($"error: {e}\n");
         TryWrite(Path.Combine(Host.DataDir, "scan.txt"), sb.ToString(), append: false);
