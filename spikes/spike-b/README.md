@@ -87,6 +87,13 @@ Still open for the real app: when the user picks a save in the "wrong" copy, off
 - melonDS shows the DS bottom screen on the Thor's second display. Screenshot it with `screencap -d <id>` (IDs from `dumpsys SurfaceFlinger --display-id`). Touch it with `input touchscreen -d 4 swipe x y x y 200`; a plain `tap` is too short to register.
 - To launch a game from adb, use a `content://` link under **melonDS's own** grant: `am start -a me.magnum.melonds.LAUNCH_ROM -n me.magnum.melonds/.ui.emulator.EmulatorActivity --es uri 'content://com.android.externalstorage.documents/tree/12A8-6020%3AROMS%2Fnds/document/12A8-6020%3AROMS%2Fnds%2F<ROM>.zip'`. Cocoon's link is under its own `ROMS` grant and only works when Cocoon passes the permission along.
 
+### Bottom screen
+
+The Thor's bottom screen is a second Android display ("Screen-2", logical ID 4, 1240×1080 landscape, its own touch) flagged `FLAG_PRESENTATION`. So an app can draw on it with the standard `Presentation` API, with no extra permissions. The spike puts the **log and the last scan report** there (`SecondScreen.cs` plus `BottomScreenView`), which frees the top screen for emulators and saves. On a one-screen device the log stays in the left column.
+
+- A second `AvaloniaView` inside the presentation works alongside the main activity's view, and touch scrolling works on it.
+- **A presentation stays up when the app goes to the background**, which would cover melonDS's bottom screen. So the spike takes it down in the activity's `OnStop` and shows it again in `OnStart`. Checked: pressing Home gives the bottom screen straight back to the launcher, and coming back restores the log with its contents.
+
 ## Things this spike found
 
 - **PKHeX.Core changes the byte array you give it.** The first version backed up the save *after* loading it, so the "backup" already held the change. Back up before parsing, and give PKHeX.Core its own copy. The real app should test that backups match the original file.
@@ -108,7 +115,7 @@ Still open for the real app: when the user picks a save in the "wrong" copy, off
 | `SpikeB.Core` | Plain .NET: emulator profiles, `ISaveFolder`, the scanner (full scan, the launch check of known saves, "new / changed" tracking and the "two saves for one game" check), and the in-place writer with backups. No Android code. |
 | `SpikeB.Cli` | `save-scan [--check] <emulator> <folder> [<emulator> <folder> ...] [state.json]` runs the same scan on normal folders (Mac or Linux); `--check` does the launch check against `state.json` instead. Emulators: `melonds`, `melonds-roms`, `retroarch`, `eden`. |
 | `SpikeB.App` | Avalonia UI: emulators with **Give access**, the "My saves" list (with the two-saves warnings and **Scan now**), and the write test buttons. |
-| `SpikeB.Android` | Android head (`io.github.rdennings.rhome.spikeb`): `SafFolderAccess.cs` holds all the picker and file-descriptor code. |
+| `SpikeB.Android` | Android head (`io.github.rdennings.rhome.spikeb`): `SafFolderAccess.cs` holds all the picker and file-descriptor code; `SecondScreen.cs` puts a view on the bottom screen. |
 
 ## Running it yourself
 
