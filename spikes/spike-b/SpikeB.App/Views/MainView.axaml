@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SpikeB.App.Views.MainView">
+    <Grid Margin="16" ColumnDefinitions="2*,16,3*" RowDefinitions="Auto,*">
+        <StackPanel Grid.ColumnSpan="3" Spacing="4" Margin="0,0,0,12">
+            <TextBlock Text="rhome · spike B" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock x:Name="InfoText" TextWrapping="Wrap" Opacity="0.75" />
+        </StackPanel>
+
+        <!-- Left: emulators and their folder access -->
+        <DockPanel Grid.Row="1" Grid.Column="0">
+            <TextBlock DockPanel.Dock="Top" Text="Emulators" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <StackPanel DockPanel.Dock="Top" x:Name="EmulatorRows" Spacing="10" />
+            <Button DockPanel.Dock="Top" x:Name="RescanButton" Content="Scan again" Margin="0,12,0,0" />
+            <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,4" />
+            <ScrollViewer>
+                <SelectableTextBlock x:Name="LogText" TextWrapping="Wrap" FontSize="12" Opacity="0.85" />
+            </ScrollViewer>
+        </DockPanel>
+
+        <!-- Right: the "My saves" list and write tests for the selected save -->
+        <DockPanel Grid.Row="1" Grid.Column="2">
+            <TextBlock DockPanel.Dock="Top" x:Name="SavesHeader" Text="My saves" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
+                <TextBlock x:Name="SelectedText" TextWrapping="Wrap" Text="Tap a save to test writing it." Opacity="0.75" />
+                <WrapPanel>
+                    <Button x:Name="WriteSameButton" Content="Write back unchanged" IsEnabled="False" Margin="0,0,8,8" />
+                    <Button x:Name="WriteMoneyButton" Content="Write back with money +1" IsEnabled="False" Margin="0,0,8,8" />
+                    <Button x:Name="RestoreButton" Content="Restore last backup" IsEnabled="False" Margin="0,0,8,8" />
+                </WrapPanel>
+            </StackPanel>
+            <ListBox x:Name="SavesList" />
+        </DockPanel>
+    </Grid>
+</UserControl>

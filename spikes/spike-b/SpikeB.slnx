@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SpikeB.Core/SpikeB.Core.csproj" />
+  <Project Path="SpikeB.Cli/SpikeB.Cli.csproj" />
+  <Project Path="SpikeB.App/SpikeB.App.csproj" />
+  <Project Path="SpikeB.Android/SpikeB.Android.csproj" />
+</Solution>
