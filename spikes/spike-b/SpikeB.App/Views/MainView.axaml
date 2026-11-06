@@ -12,7 +12,7 @@
             <StackPanel>
                 <TextBlock Text="Emulators" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
                 <StackPanel x:Name="EmulatorRows" Spacing="10" />
-                <TextBlock Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,4" />
+                <TextBlock x:Name="LogHeader" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,4" />
                 <SelectableTextBlock x:Name="LogText" TextWrapping="Wrap" FontSize="12" Opacity="0.85" />
             </StackPanel>
         </ScrollViewer>

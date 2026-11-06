@@ -13,6 +13,7 @@ public partial class MainView : UserControl
 {
     readonly Dictionary<string, ISaveFolder> _folders = [];
     readonly Dictionary<string, string> _lastBackup = [];
+    BottomScreenView? _bottom;
     bool _busy;
 
     string StatePath => Path.Combine(Host.DataDir, "scan-state.json");
@@ -33,7 +34,34 @@ public partial class MainView : UserControl
     {
         base.OnLoaded(e);
         Directory.CreateDirectory(Host.DataDir);
+        ShowBottomScreen();
         _ = ScanAsync("launch");
+    }
+
+    /// <summary>
+    /// On a two-screen device the log and the last scan report move to the second screen, which gives
+    /// the main screen more room. Elsewhere the log stays in the left column.
+    /// </summary>
+    void ShowBottomScreen()
+    {
+        if (_bottom is not null || Host.ShowOnSecondScreen is not { } show)
+            return;
+        var view = new BottomScreenView();
+        try
+        {
+            if (!show(view))
+                return;
+        }
+        catch (Exception ex)
+        {
+            Log($"second screen: couldn't show ({ex.GetType().Name}: {ex.Message})");
+            return;
+        }
+        _bottom = view;
+        view.LogText.Text = LogText.Text;
+        LogHeader.IsVisible = false;
+        LogText.IsVisible = false;
+        Log("second screen: showing the log and last scan there");
     }
 
     FoundSave? Selected => (SavesList.SelectedItem as Control)?.Tag as FoundSave;
@@ -194,7 +222,10 @@ public partial class MainView : UserControl
         }
         foreach (var e in result.Errors)
             sb.Append($"error: {e}\n");
-        TryWrite(Path.Combine(Host.DataDir, "scan.txt"), sb.ToString(), append: false);
+        var report = sb.ToString();
+        TryWrite(Path.Combine(Host.DataDir, "scan.txt"), report, append: false);
+        if (_bottom is { } bottom)
+            Dispatcher.UIThread.Post(() => bottom.ScanText.Text = report);
     }
 
     // ---- Write tests -----------------------------------------------------------------------
@@ -260,7 +291,12 @@ public partial class MainView : UserControl
     void Log(string line)
     {
         line = $"{DateTime.Now:HH:mm:ss} {line}";
-        Dispatcher.UIThread.Post(() => LogText.Text = line + "\n" + LogText.Text);
+        Dispatcher.UIThread.Post(() =>
+        {
+            LogText.Text = line + "\n" + LogText.Text;
+            if (_bottom is { } bottom)
+                bottom.LogText.Text = LogText.Text;
+        });
         TryWrite(Path.Combine(Host.DataDir, "log.txt"), line + "\n", append: true);
     }
 

@@ -23,4 +23,10 @@ public static class Host
     public static string DataDir { get; set; } = Path.Combine(Path.GetTempPath(), "rhome-spike-b");
 
     public static string Platform { get; set; } = Environment.OSVersion.ToString();
+
+    /// <summary>
+    /// Puts a control on a second screen (the Ayn Thor's bottom screen) and returns true, or returns
+    /// false when there's no second screen. Null on platforms that can't do it.
+    /// </summary>
+    public static Func<Avalonia.Controls.Control, bool>? ShowOnSecondScreen { get; set; }
 }

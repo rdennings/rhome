@@ -17,15 +17,30 @@ public class MainActivity : AvaloniaMainActivity
 {
     readonly Dictionary<int, TaskCompletionSource<(Result, Intent?)>> _pending = [];
     int _nextRequest = 0x5B00;
+    SecondScreen? _secondScreen;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         var files = GetExternalFilesDir(null)?.AbsolutePath ?? FilesDir!.AbsolutePath;
         Host.DataDir = files;
         Host.Folders = new SafFolderAccess(this, files);
+        _secondScreen = new SecondScreen(this);
+        Host.ShowOnSecondScreen = _secondScreen.Show;
         string release = Build.VERSION.Release ?? "?", model = Build.Model ?? "?";
         Host.Platform = $"Android {release} ({model}), security patch {Build.VERSION.SecurityPatch}";
         base.OnCreate(savedInstanceState);
+    }
+
+    protected override void OnStart()
+    {
+        base.OnStart();
+        _secondScreen?.OnStart();
+    }
+
+    protected override void OnStop()
+    {
+        _secondScreen?.OnStop();
+        base.OnStop();
     }
 
     public Task<(Result, Intent?)> StartForResultAsync(Intent intent)

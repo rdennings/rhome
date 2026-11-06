@@ -129,6 +129,7 @@ The bank and transfer logic with no UI, driven by tests and a small CLI.
 - Bank boxes: create, rename, reorder, move Pokémon between boxes.
 - Pokémon detail view (stats, moves, ribbons, origin, "visited games").
 - Sprites/icons pipeline (see R5).
+- **Two-screen devices** (the Thor): use the bottom screen when there is one (Rodney, 2026-11-06). Spike B showed how: an Android `Presentation` with a second Avalonia view, taken down whenever the app is in the background so emulators get the screen back. What goes there is still open; the split view (game boxes on one screen, bank on the other) is the obvious candidate, and a debug log is useful during development.
 - **Exit:** Rodney does the MVP sentence on the Thor with his real Platinum and Emerald saves.
 
 ### M3 — Collection + MVP hardening (L)
