@@ -54,9 +54,13 @@ sealed class SafFolderAccess(MainActivity activity, string dataDir) : IFolderAcc
 
     public async Task<string> RequestAccessAsync(EmulatorProfile emulator)
     {
-        string expected = "primary:" + emulator.StoragePath;
+        // Document IDs are "<volume>:<path>": "primary" for internal storage, the volume's UUID
+        // (e.g. 12A8-6020) for an SD card.
+        string? volume = emulator.OnSdCard ? SdCardUuid() : "primary";
+        string? expected = volume is null ? null : $"{volume}:{emulator.StoragePath}";
         var intent = new Intent(Intent.ActionOpenDocumentTree);
-        intent.PutExtra(DocumentsContract.ExtraInitialUri, DocumentsContract.BuildDocumentUri(ExternalStorage, expected));
+        if (expected is not null)
+            intent.PutExtra(DocumentsContract.ExtraInitialUri, DocumentsContract.BuildDocumentUri(ExternalStorage, expected));
         intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission |
                         ActivityFlags.GrantPersistableUriPermission | ActivityFlags.GrantPrefixUriPermission);
 
@@ -80,7 +84,16 @@ sealed class SafFolderAccess(MainActivity activity, string dataDir) : IFolderAcc
         var picked = DocumentsContract.GetTreeDocumentId(tree);
         return picked == expected
             ? $"granted {Describe(tree)} (the expected folder)"
-            : $"granted {Describe(tree)}, NOT the expected {expected}";
+            : $"granted {Describe(tree)}, NOT the expected {expected ?? emulator.Where}";
+    }
+
+    /// <summary>The UUID of the first mounted removable volume (the SD card), or null if there's none.</summary>
+    string? SdCardUuid()
+    {
+        var storage = (global::Android.OS.Storage.StorageManager)activity.GetSystemService(Context.StorageService)!;
+        return storage.StorageVolumes
+            .FirstOrDefault(v => v.IsRemovable && v.Uuid is not null && v.State == global::Android.OS.Environment.MediaMounted)
+            ?.Uuid;
     }
 
     static string Describe(Uri tree) => $"{tree.Authority} · {DocumentsContract.GetTreeDocumentId(tree)}";

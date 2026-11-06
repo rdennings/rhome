@@ -13,7 +13,8 @@ public sealed record FoundSave(
     SaveStatus Status,
     string Game,
     string Trainer,
-    string PlayTime);
+    string PlayTime,
+    string? Note = null);
 
 public sealed record ScanResult(
     IReadOnlyList<FoundSave> Saves,
@@ -57,6 +58,7 @@ public static class SaveScanner
         var errors = new List<string>();
         var seen = new HashSet<string>();
         var listedEmulators = new HashSet<string>();
+        var saveFiles = new List<(EmulatorProfile Emulator, SaveEntry Entry)>();
         int listed = 0, candidates = 0, read = 0;
         var listTime = TimeSpan.Zero;
         var readTime = TimeSpan.Zero;
@@ -78,7 +80,12 @@ public static class SaveScanner
 
             foreach (var entry in entries)
             {
-                if (!emulator.IsSaveFile(entry.Name) || entry.Size <= 0 || entry.Size > MaxSaveSize)
+                if (!emulator.IsSaveFile(entry.Name) || entry.Size > MaxSaveSize)
+                    continue;
+                // Empty saves aren't Pokémon saves yet, but the emulator may load one in place of
+                // the real save, so keep them for the "two saves for one game" check.
+                saveFiles.Add((emulator, entry));
+                if (entry.Size <= 0)
                     continue;
                 candidates++;
                 string key = $"{emulator.Key}|{entry.Id}";
@@ -122,10 +129,43 @@ public static class SaveScanner
                 state.Files.Remove(key);
         }
 
-        var ordered = saves.OrderByDescending(s => s.Status != SaveStatus.Unchanged)
+        var ordered = saves.Select(s => s with { Note = DuplicateNote(s, saveFiles) })
+                           .OrderByDescending(s => s.Status != SaveStatus.Unchanged)
                            .ThenByDescending(s => s.Entry.LastModified)
                            .ToList();
         return new ScanResult(ordered, listed, candidates, read, listTime, readTime, errors);
+    }
+
+    /// <summary>
+    /// The same game can have a save in more than one of an emulator's folders (melonDS: in
+    /// Android/data and next to the ROM). Emulators name the save after the ROM, so saves with the
+    /// same name for the same emulator app, in different folders, are the same game. (Within one
+    /// folder the name says nothing: every Eden save is called "main".) Returns null when there's only one.
+    /// </summary>
+    public static string? DuplicateNote(FoundSave save, IReadOnlyList<(EmulatorProfile Emulator, SaveEntry Entry)> saveFiles)
+    {
+        string name = Path.GetFileNameWithoutExtension(save.Entry.Name);
+        var copies = saveFiles
+            .Where(f => f.Emulator.PackageName == save.Emulator.PackageName &&
+                        (f.Emulator.Key != save.Emulator.Key || f.Entry.Id == save.Entry.Id) &&
+                        string.Equals(Path.GetFileNameWithoutExtension(f.Entry.Name), name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (copies.Count < 2)
+            return null;
+
+        // The emulator decides which one it loads; when the folders don't say, guess the newest non-empty one.
+        var live = copies.OrderByDescending(f => f.Emulator.LoadPriority)
+                         .ThenByDescending(f => f.Entry.Size > 0)
+                         .ThenByDescending(f => f.Entry.LastModified)
+                         .First();
+        bool known = copies.Select(f => f.Emulator.LoadPriority).Distinct().Count() > 1;
+        string app = save.Emulator.Name.Split(' ')[0];
+        if (live.Entry.Id == save.Entry.Id && live.Emulator.Key == save.Emulator.Key)
+            return $"{copies.Count} saves for this game. {app} {(known ? "loads" : "probably loads")} this one.";
+
+        string other = live.Entry.Size == 0 ? "an empty save" : "the save";
+        return $"{copies.Count} saves for this game. {app} {(known ? "loads" : "probably loads")} {other} in " +
+               $"{live.Emulator.Where}/{live.Entry.RelativePath} instead, so changes here won't show in the game.";
     }
 
     static ScanState.KnownFile Identify(byte[] data, SaveEntry entry, long modified)
