@@ -5,9 +5,9 @@ namespace Rhome.Core.Tests;
 
 public class SaveDetectorTests
 {
-    // PKHeX's blank saves stand in for real ones until the fixtures in issue #4 exist. Blank Gen 3/4
-    // saves only exist in memory (they can't be written out as a save file), so the tests that start
-    // from bytes use Gen 5; the fixtures will cover Gen 3 and 4 from bytes.
+    // PKHeX's blank saves cover games there's no fixture for. Blank Gen 3/4 saves only exist in memory
+    // (they can't be written out as a save file), so the tests here that start from bytes use Gen 5;
+    // FixtureTests reads real Gen 3, 4 and 5 saves from bytes.
     static SaveFile Blank(GameVersion game) => BlankSaveFile.Get(game, "TEST", LanguageID.English);
 
     static byte[] BlankBytes(GameVersion game) => Blank(game).Write(BinaryExportSetting.None).ToArray();

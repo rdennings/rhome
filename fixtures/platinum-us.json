@@ -1,0 +1,76 @@
+{
+  "file": "platinum-us.sav",
+  "game": "Pt",
+  "generation": 4,
+  "trainer": {
+    "name": "TEST",
+    "tid": 33731,
+    "sid": 39931,
+    "gender": 1
+  },
+  "party": [
+    {
+      "slot": 1,
+      "species": "Kirlia",
+      "level": 20
+    },
+    {
+      "slot": 2,
+      "species": "Monferno",
+      "level": 34,
+      "nickname": "Tamale"
+    },
+    {
+      "slot": 3,
+      "species": "Luxray",
+      "level": 31
+    },
+    {
+      "slot": 4,
+      "species": "Budew",
+      "level": 11
+    },
+    {
+      "slot": 5,
+      "species": "Gible",
+      "level": 19
+    },
+    {
+      "slot": 6,
+      "species": "Buneary",
+      "level": 30
+    }
+  ],
+  "boxes": [
+    {
+      "box": 1,
+      "slot": 1,
+      "species": "Buneary",
+      "level": 11
+    },
+    {
+      "box": 1,
+      "slot": 2,
+      "species": "Bidoof",
+      "level": 6
+    },
+    {
+      "box": 1,
+      "slot": 3,
+      "species": "Gastly",
+      "level": 13
+    },
+    {
+      "box": 1,
+      "slot": 4,
+      "species": "Togepi",
+      "level": 1
+    },
+    {
+      "box": 1,
+      "slot": 6,
+      "species": "Eevee",
+      "level": 20
+    }
+  ]
+}

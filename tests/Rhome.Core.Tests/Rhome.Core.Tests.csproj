@@ -12,4 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Rhome.Core/Rhome.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Test saves and their manifests (fixtures/README.md). -->
+    <None Include="../../fixtures/*.sav;../../fixtures/*.json" LinkBase="fixtures" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
