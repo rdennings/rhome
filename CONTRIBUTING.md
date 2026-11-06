@@ -33,7 +33,7 @@ Thanks for wanting to help! rhome is a small, early-stage project maintained by 
 ## What must never be committed
 
 - **ROMs, BIOS files, or extracted game assets** (sprites, music, text dumps). This is a hard rule.
-- **Personal save files.** Save files contain trainer names and IDs. Test saves must be created for testing, and approved in review.
+- **Personal save files.** Save files contain trainer names and IDs. Test saves must be created for testing or scrubbed with `tools/Rhome.FixtureScrubber` (see [fixtures/README.md](fixtures/README.md)), and approved in review.
 - Secrets of any kind (API keys, tokens, service account files).
 
 The `.gitignore` blocks common ROM and save extensions as a safety net, but please check what you're adding.

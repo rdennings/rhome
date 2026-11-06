@@ -1,0 +1,32 @@
+{
+  "file": "emerald.sav",
+  "game": "E",
+  "generation": 3,
+  "trainer": {
+    "name": "TEST",
+    "tid": 52986,
+    "sid": 18018,
+    "gender": 1
+  },
+  "party": [
+    {
+      "slot": 1,
+      "species": "Treecko",
+      "level": 11,
+      "nickname": "Tree CO."
+    }
+  ],
+  "boxes": [
+    {
+      "box": 1,
+      "slot": 1,
+      "species": "Kirlia",
+      "level": 20,
+      "ot": {
+        "name": "TEST",
+        "tid": 33731,
+        "sid": 39931
+      }
+    }
+  ]
+}
