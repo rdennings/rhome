@@ -9,8 +9,9 @@ Issue #2 · [PLAN.md §3, M0, risk R1](../../docs/PLAN.md). Question: can rhome 
 1. rhome knows where each supported emulator keeps its saves by default (`SpikeB.Core/EmulatorProfile.cs`).
 2. For each installed emulator, **Give access** opens the system folder picker (`ACTION_OPEN_DOCUMENT_TREE`) already inside that folder, using `EXTRA_INITIAL_URI`. The user taps **Use this folder**, then **Allow**. That's the whole setup, once per emulator.
 3. rhome keeps the grant (`takePersistableUriPermission`). It survives app restarts and app updates.
-4. On every launch rhome lists the granted folders, reads only files that are new or changed since last time, and identifies Pokémon saves with PKHeX.Core. New and changed saves go to the top of the list.
-5. Writes open the existing file with mode `"rw"` and overwrite it from the start. They never delete, rename or truncate first, so the emulator still owns the same file. A backup is made before every write.
+4. The first time it has a folder, rhome lists it, identifies the Pokémon saves with PKHeX.Core, and remembers every save file it saw.
+5. On every launch it only **checks the saves it already knows**, one by one by document ID: changed ones are read again, deleted ones are dropped, and folders aren't listed. New saves show up when the user taps **Scan now**, which lists every folder again. New and changed saves go to the top of the list.
+6. Writes open the existing file with mode `"rw"` and overwrite it from the start. They never delete, rename or truncate first, so the emulator still owns the same file. A backup is made before every write.
 
 ## Results on the Thor (2026-11-06)
 
@@ -35,11 +36,13 @@ Android 13 refuses a grant for `Android/data` itself, but on this device it allo
 | All three folders, first time for Eden (reads 4 files) | 45 | 29 | 10 | 319 ms |
 | **Every later launch** (nothing changed, reads 0 files) | 45 | 29 | 10 | **112–120 ms** |
 | Plus the SD card ROM folder (reads 2 files) | 2,848 | 31 | 12 | 1,251 ms |
-| **Every later launch** with the ROM folder (reads 0 files) | 2,848 | 31 | 12 | **417–962 ms** |
+| Every later launch with the ROM folder, listing it each time (reads 0 files) | 2,848 | 31 | 12 | 417–962 ms |
+| **Every later launch, checking only known saves** (31 checked, nothing listed) | 0 | 31 | 12 | **143–178 ms** |
+| **Scan now** with a new save in the ROM folder (reads 1 file) | 2,849 | 32 | 13 | 2,070 ms |
 
 The scan found: Platinum ×2 and White (melonDS); Emerald, Blue and the Unbound hack, reported as FireRed (RetroArch); Sword, Scarlet, Legends: Arceus and Legends: Z-A (Eden). The ROM folder added Platinum (USA) and White again, as the copies melonDS really loads. Listing the three emulator folders takes ~50 ms; the rest is reading and identifying new or changed files.
 
-**Listing the ROM folder is the slow part.** `ROMS/nds` holds 2,803 files, and listing them through the picker's grant takes 0.35–0.9 s on every launch (1.2 s the first time), only to find two saves. The real app shouldn't list the whole ROM folder before showing anything. Options: show the last scan straight away and rescan in the background, or check each known save directly by its document ID and only list the whole folder now and then (or when the user asks).
+**Listing the ROM folder is the slow part, so launches don't list.** `ROMS/nds` holds 2,803 files, and listing them through the picker's grant takes 0.35–2 s, only to find two saves. So a launch now looks up each save it already knows by document ID (about 2.5 ms each), and listing happens only on **Scan now**, which is fine to take a couple of seconds because the user asked for it. On the Thor: a save copied into the ROM folder by adb didn't show at launch, appeared as NEW after Scan now, and was dropped at the next launch once deleted. On the Mac (`save-scan --check`, with 2,800 dummy ROMs): a changed save is read again and marked changed, and with the ROM folder moved away the check says so and keeps showing the saves it knew instead of forgetting them.
 
 ### Writing in place
 
@@ -102,9 +105,9 @@ Still open for the real app: when the user picks a save in the "wrong" copy, off
 
 | Project | What it is |
 |---|---|
-| `SpikeB.Core` | Plain .NET: emulator profiles, `ISaveFolder`, the scanner (with "new / changed" tracking and the "two saves for one game" check), and the in-place writer with backups. No Android code. |
-| `SpikeB.Cli` | `save-scan <emulator> <folder> [<emulator> <folder> ...] [state.json]` runs the same scan on normal folders (Mac or Linux). Emulators: `melonds`, `melonds-roms`, `retroarch`, `eden`. |
-| `SpikeB.App` | Avalonia UI: emulators with **Give access**, the "My saves" list (with the two-saves warnings), and the write test buttons. |
+| `SpikeB.Core` | Plain .NET: emulator profiles, `ISaveFolder`, the scanner (full scan, the launch check of known saves, "new / changed" tracking and the "two saves for one game" check), and the in-place writer with backups. No Android code. |
+| `SpikeB.Cli` | `save-scan [--check] <emulator> <folder> [<emulator> <folder> ...] [state.json]` runs the same scan on normal folders (Mac or Linux); `--check` does the launch check against `state.json` instead. Emulators: `melonds`, `melonds-roms`, `retroarch`, `eden`. |
+| `SpikeB.App` | Avalonia UI: emulators with **Give access**, the "My saves" list (with the two-saves warnings and **Scan now**), and the write test buttons. |
 | `SpikeB.Android` | Android head (`io.github.rdennings.rhome.spikeb`): `SafFolderAccess.cs` holds all the picker and file-descriptor code. |
 
 ## Running it yourself

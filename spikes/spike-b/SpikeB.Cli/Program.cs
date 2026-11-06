@@ -1,10 +1,14 @@
 using SpikeB.Core;
 
-// save-scan <emulator> <folder> [<emulator> <folder> ...] [state.json]
+// save-scan [--check] <emulator> <folder> [<emulator> <folder> ...] [state.json]
 // Runs the same scan the Android app does, on plain folders (e.g. ones pulled off the device with adb).
+// --check looks up only the saves in state.json (what the app does on launch) instead of listing folders.
 // emulator: melonds | melonds-roms | retroarch | eden
 
 var keys = string.Join('|', EmulatorProfile.All.Select(p => p.Key));
+bool check = args.Length > 0 && args[0] == "--check";
+if (check)
+    args = args[1..];
 if (args.Length < 2)
     return Usage();
 
@@ -19,7 +23,7 @@ for (; i + 1 < args.Length; i += 2)
 
 var statePath = i < args.Length ? args[i] : null;
 var state = statePath is null ? new ScanState() : ScanState.Load(statePath);
-var result = SaveScanner.Scan(sources, state);
+var result = check ? SaveScanner.Check(sources, state) : SaveScanner.Scan(sources, state);
 if (statePath is not null)
     state.Save(statePath);
 
@@ -30,14 +34,15 @@ foreach (var s in result.Saves)
         Console.WriteLine($"    note: {s.Note}");
 }
 Console.WriteLine($"\n{result.Saves.Count} Pokémon saves · {result.CandidateFiles} save files · {result.FilesListed} files listed " +
-                  $"· list {result.ListTime.TotalMilliseconds:F0} ms · read {result.FilesRead} in {result.ReadTime.TotalMilliseconds:F0} ms");
+                  $"· {result.FilesChecked} known saves checked · list/check {result.ListTime.TotalMilliseconds:F0} ms " +
+                  $"· read {result.FilesRead} in {result.ReadTime.TotalMilliseconds:F0} ms");
 foreach (var e in result.Errors)
     Console.WriteLine($"error: {e}");
 return 0;
 
 int Usage()
 {
-    Console.Error.WriteLine($"usage: save-scan <{keys}> <folder> [<emulator> <folder> ...] [state.json]");
+    Console.Error.WriteLine($"usage: save-scan [--check] <{keys}> <folder> [<emulator> <folder> ...] [state.json]");
     return 2;
 }
 

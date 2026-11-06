@@ -22,7 +22,7 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         InfoText.Text = $"{Host.Platform} · .NET {Environment.Version}";
-        RescanButton.Click += (_, _) => _ = ScanAsync("manual");
+        RescanButton.Click += (_, _) => _ = ScanAsync("scan now", full: true);
         SavesList.SelectionChanged += (_, _) => UpdateSelection();
         WriteSameButton.Click += (_, _) => _ = WriteTestAsync(WriteTest.SameBytes);
         WriteMoneyButton.Click += (_, _) => _ = WriteTestAsync(WriteTest.MoneyPlusOne);
@@ -73,7 +73,7 @@ public partial class MainView : UserControl
                 Log($"{e.Name}: opening the folder picker at {e.Where}");
                 var message = await access!.RequestAccessAsync(e);
                 Log($"{e.Name}: {message}");
-                await ScanAsync($"after {e.Name} grant");
+                await ScanAsync($"after {e.Name} grant", full: true);
             };
 
             var text = new StackPanel
@@ -94,7 +94,7 @@ public partial class MainView : UserControl
 
     // ---- Scan ------------------------------------------------------------------------------
 
-    async Task ScanAsync(string reason)
+    async Task ScanAsync(string reason, bool full = false)
     {
         if (_busy)
             return;
@@ -110,7 +110,7 @@ public partial class MainView : UserControl
             var result = await Task.Run(() =>
             {
                 var state = ScanState.Load(StatePath);
-                var r = SaveScanner.Scan(sources, state);
+                var r = full ? SaveScanner.Scan(sources, state) : SaveScanner.Check(sources, state);
                 state.Save(StatePath);
                 return r;
             });
@@ -123,7 +123,7 @@ public partial class MainView : UserControl
             int fresh = result.Saves.Count(s => s.Status != SaveStatus.Unchanged);
             SavesHeader.Text = $"My saves ({result.Saves.Count}{(fresh > 0 ? $", {fresh} new or changed" : "")})";
 
-            var summary = $"scan ({reason}): {sources.Count} folders, {result.FilesListed} files listed, " +
+            var summary = $"{(full ? "scan" : "check")} ({reason}): {sources.Count} folders, {result.FilesListed} files listed, {result.FilesChecked} known saves checked, " +
                           $"{result.CandidateFiles} save files, {result.Saves.Count} Pokémon · " +
                           $"list {result.ListTime.TotalMilliseconds:F0} ms, read {result.FilesRead} in " +
                           $"{result.ReadTime.TotalMilliseconds:F0} ms, total {total.TotalMilliseconds:F0} ms";

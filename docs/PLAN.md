@@ -50,9 +50,16 @@ That is the smallest thing that delivers the "collection" feeling, the reason th
 **Platform:** Android only (the Thor is the reference device). Linux is the next platform (v1.2), ahead of Windows and Mac. The core is built to be portable from day one (see §4).
 
 **Loading saves**
-- Pick a save file by hand (Android file picker). The app identifies the game from the save itself (save-first).
-- Remembers it in a **"My saves"** list (name, game, trainer, last opened) so next time it's one tap.
-- Works with RetroArch (`.srm`) and melonDS (`.sav`) on the Thor — see Risk R1, this is the biggest unknown.
+- **First-run setup**, three steps (Rodney, 2026-11-06):
+  1. **Find emulators.** One button checks which emulators from rhome's list of known emulators are installed.
+  2. **Give access.** For each one found, one tap opens the system folder picker already inside that emulator's save folder; the user taps *Use this folder*, then *Allow*. This includes melonDS's ROM folder, because melonDS saves next to the ROM once it can write there.
+  3. **First scan.** One button lists the granted folders and finds the Pokémon saves. The app identifies the game from the save itself (save-first).
+- The setup can be run again from settings, for example after installing another emulator.
+- **Known emulators list:** for each emulator, its Android package, default save folders, save file types and which copy it loads when there are two. It's data in the core, not code, so adding an emulator doesn't need new logic. MVP: melonDS and RetroArch (`.srm`), the two on the Thor. Linux paths join the same list in v1.2.
+- Found saves go in a **"My saves"** list (game, trainer, play time, where it is) so opening one is one tap.
+- **Every launch checks only the saves it already knows** (has each one changed or gone?), without listing folders: about 150 ms on the Thor, even with 2,800 ROMs in the ROM folder. New saves show up with a **Scan now** button. (Spike B: listing the ROM folder on every launch cost 0.4–2 s.)
+- **One game, two saves:** when a game has a save in more than one place, show both and say which one the emulator loads, so nobody edits the copy the game ignores.
+- Fallback: pick a save file by hand, for an emulator that isn't on the list.
 
 **Transfers**
 - Split view: game boxes + party on the left, bank on the right. **Move**, not copy.
@@ -81,7 +88,7 @@ That is the smallest thing that delivers the "collection" feeling, the reason th
 |---|---|
 | 3DS (X/Y, ORAS, S/M, US/UM, Let's Go) + Switch (SwSh, BDSP, PLA, S/V, Z-A) | v1.1 |
 | Gen 1/2 one-way import | v1.1 |
-| Watched folders, emulator-aware default paths | v1.2 |
+| Watched folders (new saves appear without tapping Scan now) | v1.2 |
 | Box groups, decorations, smart boxes, dex layers (forms, shinies, regional) | v1.2 |
 | Linux release (desktop + Steam Deck-style handhelds) | v1.2 |
 | Windows and Mac releases | after Linux |
@@ -117,6 +124,7 @@ The bank and transfer logic with no UI, driven by tests and a small CLI.
 - **Exit:** CLI can do Platinum → bank → Emerald → bank → Platinum, and Black → bank → Platinum → bank → Black, and each final Pokémon equals the original plus the progress it made in the other game; all Tier 1 fixtures round-trip byte-identical when nothing changed.
 
 ### M2 — Android app: transfer loop (L)
+- First-run setup (find emulators → give access → first scan), the known emulators list, and the launch check + Scan now (see "Loading saves" in §2).
 - "My saves" list, open a save, split view, drag/tap to move, pending-changes sheet, Save.
 - Bank boxes: create, rename, reorder, move Pokémon between boxes.
 - Pokémon detail view (stats, moves, ribbons, origin, "visited games").
@@ -135,7 +143,7 @@ The bank and transfer logic with no UI, driven by tests and a small CLI.
 3DS and Switch games, with full two-way movement: no "one-way like HOME" limit. Forward conversion is PKHeX's, and prototypes already exist for X/Y, SwSh and S/V. The big job is the return trip down to Gen 3–5: abilities and mint natures, forms older games lack, moves removed in later games, Gigantamax/Tera data kept in the bank. Also Gen 1/2 one-way import with user-confirmed matching. Comes right after the MVP because the prototypes give it a head start (Rodney, 2026-11-04).
 
 ### v1.2 — Comfort (M)
-Watched folders + emulator-aware save locations; box groups, decorations, smart boxes; dex layers; **Linux release** (desktop, Steam Deck and similar handhelds; emulator-aware paths for RetroArch, melonDS etc. on Linux). Windows and Mac follow once Linux is solid.
+Watched folders (new saves appear on their own); box groups, decorations, smart boxes; dex layers; **Linux release** (desktop, Steam Deck and similar handhelds; emulator-aware paths for RetroArch, melonDS etc. on Linux). Windows and Mac follow once Linux is solid.
 
 ### v1.3 — Accounts & sync (L)
 Sign-in, Steam-Cloud-style sync with per-Pokémon merge and conflict prompts reusing the pending-changes UI. Re-check the Firebase decision against the chosen stack first (see R4).
@@ -223,7 +231,7 @@ The idea: **store every format a Pokémon has lived in, plus a normalized summar
 
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R1 | **Android 11+ blocks apps from `Android/data/`**, where melonDS (and Eden) keep saves on the Thor. The file picker can't grant that folder on Android 13. | Could block the core loop for DS games. | Spike B in M0. Options: melonDS setting to store saves next to ROMs (check), Shizuku-based access, or user-configured save folders. RetroArch's `Android/media` path is likely fine. Whatever we use must still write **in place**. |
+| R1 | **Android 11+ blocks apps from `Android/data/`**, where melonDS (and Eden) keep saves on the Thor. The file picker can't grant that folder on Android 13. | Could block the core loop for DS games. | **Solved on the Thor by Spike B** ([`spikes/spike-b`](../spikes/spike-b/README.md)): the system folder picker, opened right at the emulator's folder, grants `Android/data/<app>` on Android 13, and writes in place load in game. Left: a system update or Google's updatable file picker could block that grant; fallback is Shizuku for melonDS (RetroArch, Eden and Dolphin share their folders with the picker anyway). |
 | R2 | Silent save corruption | Losing someone's run = trust gone | Backups before every write, validation, no-op round-trip tests, refuse unknown/odd saves. |
 | R3 | Incomplete arrival side-effects | Pokémon "works" but the game disagrees (dex, ribbons, titles) | Per-game checklist + native diffing; nothing marked supported until it passes in-game. |
 | R4 | Firebase ↔ .NET friction | Sync milestone gets harder | Sync is v1.3; keep backend pluggable; re-decide then. |

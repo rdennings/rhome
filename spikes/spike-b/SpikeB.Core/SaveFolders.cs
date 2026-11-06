@@ -12,6 +12,15 @@ public interface ISaveFolder
     /// <summary>Every file under the folder, down to <paramref name="maxDepth"/> levels of subfolders.</summary>
     IReadOnlyList<SaveEntry> List(int maxDepth);
 
+    /// <summary>Whether the folder itself can be reached right now (an SD card can be taken out).</summary>
+    bool IsAvailable();
+
+    /// <summary>
+    /// Looks up one file by the <see cref="SaveEntry.Id"/> an earlier listing gave it, without listing the
+    /// folder. Null if it's gone. <paramref name="relativePath"/> is kept as is (null: use the file name).
+    /// </summary>
+    SaveEntry? Find(string id, string? relativePath);
+
     byte[] ReadAll(SaveEntry entry);
 
     /// <summary>
@@ -39,6 +48,16 @@ public sealed class LocalSaveFolder(string root) : ISaveFolder
             return;
         foreach (var sub in dir.EnumerateDirectories())
             Walk(sub, prefix + sub.Name + "/", depthLeft - 1, result);
+    }
+
+    public bool IsAvailable() => Directory.Exists(root);
+
+    public SaveEntry? Find(string id, string? relativePath)
+    {
+        var file = new FileInfo(id);
+        return file.Exists
+            ? new SaveEntry(file.FullName, file.Name, relativePath ?? file.Name, file.Length, file.LastWriteTimeUtc)
+            : null;
     }
 
     public byte[] ReadAll(SaveEntry entry) => File.ReadAllBytes(entry.Id);

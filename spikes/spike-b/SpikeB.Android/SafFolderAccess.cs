@@ -150,6 +150,33 @@ sealed class SafSaveFolder(ContentResolver resolver, Uri tree) : ISaveFolder
             Walk(id, prefix + name + "/", depthLeft - 1, result);
     }
 
+    public bool IsAvailable() => Query(DocumentsContract.GetTreeDocumentId(tree)!) is not null;
+
+    public SaveEntry? Find(string id, string? relativePath)
+    {
+        var row = Query(id);
+        if (row is not { } r || r.Mime == DocumentsContract.Document.MimeTypeDir)
+            return null;
+        return new SaveEntry(id, r.Name, relativePath ?? r.Name, r.Size, DateTimeOffset.FromUnixTimeMilliseconds(r.Modified));
+    }
+
+    /// <summary>One document's row, or null if it doesn't exist. A lost grant still throws (SecurityException).</summary>
+    (string Name, string Mime, long Size, long Modified)? Query(string id)
+    {
+        try
+        {
+            using var c = resolver.Query(DocumentsContract.BuildDocumentUriUsingTree(tree, id)!, Columns, null, null, null);
+            if (c is null || !c.MoveToFirst())
+                return null;
+            return (c.GetString(1) ?? "", c.GetString(2) ?? "", c.IsNull(3) ? 0 : c.GetLong(3), c.IsNull(4) ? 0 : c.GetLong(4));
+        }
+        catch (Java.Lang.IllegalArgumentException)
+        {
+            // The external storage provider reports a missing file this way.
+            return null;
+        }
+    }
+
     Uri DocumentUri(SaveEntry entry) => DocumentsContract.BuildDocumentUriUsingTree(tree, entry.Id)!;
 
     public byte[] ReadAll(SaveEntry entry)
