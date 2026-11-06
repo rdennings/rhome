@@ -1,0 +1,4 @@
+<Project>
+  <!-- Stops the spikes from picking up the repo's Directory.Build.props: they're frozen experiments
+       with their own settings. -->
+</Project>

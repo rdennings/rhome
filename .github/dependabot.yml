@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    # The spikes are frozen experiments; only the real solution gets updates.
+    exclude-paths:
+      - spikes/**
+    schedule:
+      interval: weekly
+    groups:
+      # Test packages move together and never ship in the app.
+      test:
+        patterns:
+          - xunit*
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

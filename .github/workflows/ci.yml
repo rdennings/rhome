@@ -1,0 +1,41 @@
+name: CI
+
+# Builds rhome and runs the core tests on Linux, so a platform dependency sneaking into the core
+# breaks the build right away (PLAN.md §4, risk R8).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Restore
+        run: dotnet restore Rhome.slnx
+
+      - name: Build
+        run: dotnet build Rhome.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution Rhome.slnx --configuration Release --no-build
