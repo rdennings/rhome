@@ -20,12 +20,12 @@ Thanks for wanting to help! rhome is a small, early-stage project maintained by 
 1. Fork the repo (or create a branch if you have write access).
 2. Name branches after what they do, e.g. `gen4-pokedex-flags` or `fix/emerald-checksum`.
 3. Keep pull requests focused on one thing, and link the issue they address.
-4. Make sure the build and tests pass (CI runs them on Linux once the code lands).
+4. Make sure the build and tests pass: `dotnet test --solution Rhome.slnx`. CI runs the same on Linux for every pull request.
 5. A maintainer reviews and merges. PRs are squash-merged, so the PR title becomes the commit message; keep it clear.
 
 ## Ground rules for code
 
-- **Keep the core portable.** `romHome.Core` (the engine) must not use UI or platform-specific APIs; it works on bytes and streams handed to it. See "Portability rules for the core" in [docs/PLAN.md](docs/PLAN.md).
+- **Keep the core portable.** `Rhome.Core` (the engine) must not use UI or platform-specific APIs; it works on bytes and streams handed to it. See "Portability rules for the core" in [docs/PLAN.md](docs/PLAN.md).
 - **Never risk a save.** Anything that writes a save needs a test, and must keep backups and in-place writing intact.
 - **Match the game.** When writing a Pokémon into a game, do the bookkeeping the game itself would do. Compare against a Pokémon the game created itself to catch missing fields.
 - Follow the formatting in `.editorconfig`.

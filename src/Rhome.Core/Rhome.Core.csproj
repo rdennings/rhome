@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The engine. Plain .NET + PKHeX.Core only: no UI, no Android APIs, no file paths
+       (PLAN.md §4 portability rules). A test enforces this. -->
+  <ItemGroup>
+    <PackageReference Include="PKHeX.Core" />
+  </ItemGroup>
+</Project>

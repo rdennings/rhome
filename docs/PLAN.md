@@ -181,7 +181,7 @@ Alternatives considered: **Kotlin Multiplatform** or a **Rust core**. Both are p
    │
  App services ─ changeset (pending changes) · backups · save locator / pairing
    │
- romHome.Core ─ bank model · identity matching · merge/retention rules
+ Rhome.Core  ─ bank model · identity matching · merge/retention rules
    │            · downgrade converters · arrival side-effects per game
    │
  PKHeX.Core  ─ save formats · PKM formats · checksums/crypto · forward conversion
@@ -190,7 +190,7 @@ Alternatives considered: **Kotlin Multiplatform** or a **Rust core**. Both are p
 ```
 
 **Portability rules for the core** (these keep it movable to any platform):
-- `romHome.Core` references only PKHeX.Core and the standard .NET library: no UI, no Android APIs, no file paths.
+- `Rhome.Core` references only PKHeX.Core and the standard .NET library: no UI, no Android APIs, no file paths. A test (`PortabilityTests`) fails if anything else gets added.
 - It reads and writes saves as **bytes/streams** handed to it. Finding, opening and writing files in place is the platform layer's job (Android file access today; Linux file system next).
 - Anything platform-specific (save locations, file permissions, backups folder) sits behind a small interface with one implementation per platform.
 - CI runs the core tests on Linux, so a platform dependency sneaking in breaks the build immediately.

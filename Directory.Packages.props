@@ -1,0 +1,12 @@
+<Project>
+  <!-- One place for every package version (the spikes keep their own file). -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="PKHeX.Core" Version="26.10.18" />
+
+    <!-- Tests -->
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+</Project>

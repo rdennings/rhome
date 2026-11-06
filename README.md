@@ -35,6 +35,16 @@ Windows and Mac follow the Linux release. Details and reasoning in [docs/PLAN.md
 
 The [`prototypes/`](prototypes/) folder holds the Python scripts that proved save reading and transfers work, including in-game tests on real emulators. They're reference material, not the app.
 
+## Building
+
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download). From the repo root:
+
+```bash
+dotnet test --solution Rhome.slnx
+```
+
+That builds the core (`src/Rhome.Core`) and runs its tests (`tests/`). The Android app isn't in the solution yet; the experiments that proved it works are in [`spikes/`](spikes/).
+
 ## Contributing
 
 Contributions and ideas are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; the short version is to open an issue or discussion before starting on anything big.
