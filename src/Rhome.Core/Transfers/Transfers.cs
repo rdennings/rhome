@@ -7,7 +7,8 @@ namespace Rhome.Core;
 public sealed class TransferResult
 {
     TransferResult(BankPokemon? pokemon, SaveSlot? saveSlot, PKM? written, string? refusal,
-        IReadOnlyList<ConversionNote> notes, IReadOnlyList<string> bookkeeping)
+        IReadOnlyList<ConversionNote> notes, IReadOnlyList<string> bookkeeping, bool returned = false,
+        IReadOnlyList<BankPokemon>? candidates = null)
     {
         Pokemon = pokemon;
         SaveSlot = saveSlot;
@@ -15,9 +16,13 @@ public sealed class TransferResult
         Refusal = refusal;
         Notes = notes;
         Bookkeeping = bookkeeping;
+        Returned = returned;
+        Candidates = candidates ?? [];
     }
 
-    /// <summary>The bank record that was created (import) or checked out (withdraw).</summary>
+    /// <summary>
+    /// The bank record that was created or returned to (import), or checked out (withdraw).
+    /// </summary>
     public BankPokemon? Pokemon { get; }
 
     /// <summary>The save slot it came from (import) or went into (withdraw).</summary>
@@ -35,16 +40,56 @@ public sealed class TransferResult
     /// <summary>What the arrival bookkeeping changed in the save (withdraw only), e.g. the Pokédex.</summary>
     public IReadOnlyList<string> Bookkeeping { get; }
 
+    /// <summary>True when an import recognized a checked-out Pokémon coming back, and merged it into its record.</summary>
+    public bool Returned { get; }
+
+    /// <summary>
+    /// When an import was refused because the Pokémon might be one of these bank records: the UI asks which (or
+    /// whether it's a new one) and imports again with <see cref="ImportAs"/>.
+    /// </summary>
+    public IReadOnlyList<BankPokemon> Candidates { get; }
+
     [MemberNotNullWhen(true, nameof(Pokemon), nameof(SaveSlot))]
     [MemberNotNullWhen(false, nameof(Refusal))]
     public bool Succeeded => Refusal is null;
 
     internal static TransferResult Done(BankPokemon pokemon, SaveSlot slot, PKM? written,
-        IReadOnlyList<ConversionNote> notes, IReadOnlyList<string> bookkeeping) =>
-        new(pokemon, slot, written, null, notes, bookkeeping);
+        IReadOnlyList<ConversionNote> notes, IReadOnlyList<string> bookkeeping, bool returned = false) =>
+        new(pokemon, slot, written, null, notes, bookkeeping, returned);
 
     internal static TransferResult Refused(string reason) => new(null, null, null, reason, [], []);
+
+    internal static TransferResult Ask(IReadOnlyList<BankPokemon> candidates) =>
+        new(null, null, null,
+            "This might be a Pokémon that's already in the bank. Choose which one it is, or import it as a new one.",
+            [], [], candidates: candidates);
 }
+
+/// <summary>How an import treats a Pokémon the bank may already know.</summary>
+/// <param name="ReturningTo">The record it is: the user's answer when the import listed candidates.</param>
+/// <param name="AsNew">A new record, whatever the bank knows.</param>
+public readonly record struct ImportAs(Guid? ReturningTo, bool AsNew)
+{
+    /// <summary>Merge into the record it unmistakably is; ask when it might be one; otherwise a new record.</summary>
+    public static ImportAs Auto => default;
+
+    public static ImportAs New => new(null, true);
+
+    public static ImportAs Return(Guid record) => new(record, false);
+}
+
+/// <summary>Which moves a Pokémon takes into a game it has been in before (PLAN.md §5).</summary>
+public enum MovesetChoice
+{
+    /// <summary>The moves it knows now, from the game it was last in. The default.</summary>
+    Newest,
+
+    /// <summary>The moves it had the last time it was in a game of this format.</summary>
+    LastInThisGame,
+}
+
+/// <summary>The two movesets a withdraw can offer. <see cref="LastInThisGame"/> is null when there's no choice to make.</summary>
+public sealed record MovesetOptions(Moveset Newest, Moveset? LastInThisGame);
 
 /// <summary>
 /// Moving Pokémon between a save and the bank (PLAN.md §2 "Transfers", §5). Both work on a save and a bank in
@@ -54,12 +99,19 @@ public sealed class TransferResult
 public static class Transfers
 {
     /// <summary>
-    /// Takes the Pokémon in <paramref name="from"/> out of the save and into the bank, as a new record with a
-    /// snapshot. It goes to <paramref name="into"/>, or the bank's first free slot. The save slot is emptied; a
-    /// party closes the gap, as in the games.
+    /// Takes the Pokémon in <paramref name="from"/> out of the save and into the bank. The save slot is emptied;
+    /// a party closes the gap, as in the games.
     /// </summary>
+    /// <remarks>
+    /// A Pokémon coming back from a game it was withdrawn into is merged into its record (<see cref="Identity"/>):
+    /// its snapshot in this format is replaced by the one it comes back with, so its progress follows the newest
+    /// game, and it returns to its placeholder slot. Anything else becomes a new record with a snapshot, in
+    /// <paramref name="into"/> or the bank's first free slot. When it only might be a known Pokémon, nothing
+    /// happens and the result lists the candidates; <paramref name="how"/> carries the user's answer.
+    /// </remarks>
     /// <param name="saveId">The bank's ID for this save (<see cref="BankSave.Id"/>); it must be in <see cref="Bank.Saves"/>.</param>
-    public static TransferResult Import(Bank bank, SaveFile save, Guid saveId, SaveSlot from, DateTimeOffset now, BankSlot? into = null)
+    public static TransferResult Import(Bank bank, SaveFile save, Guid saveId, SaveSlot from, DateTimeOffset now,
+        BankSlot? into = null, ImportAs how = default)
     {
         if (bank.Saves.All(s => s.Id != saveId))
             throw new ArgumentException($"The bank doesn't know save {saveId}.", nameof(saveId));
@@ -76,6 +128,34 @@ public static class Transfers
         if (from.IsParty && !SaveContents.Party(save).Any(s => s.Where != from && !s.Pokemon.IsEgg))
             return TransferResult.Refused("That's the last Pokémon in the party that isn't an egg, and the game needs one.");
 
+        BankPokemon? returning = null;
+        if (!how.AsNew)
+        {
+            var match = Identity.Find(bank, pk, saveId);
+            if (how.ReturningTo is { } chosen)
+            {
+                returning = bank.Pokemon.Find(p => p.Id == chosen)
+                    ?? throw new ArgumentException($"The bank has no Pokémon {chosen}.", nameof(how));
+                if (returning != match.Match && !match.Candidates.Contains(returning))
+                    return TransferResult.Refused("That bank Pokémon doesn't share this one's personality value and trainer IDs, so it can't be the same Pokémon.");
+                if (returning.IsInBank)
+                    return TransferResult.Refused("That one is in the bank already, not out in a game.");
+            }
+            else if (match.Match is not null)
+                returning = match.Match;
+            else if (match.Candidates.Count > 0)
+                return TransferResult.Ask(match.Candidates);
+        }
+
+        if (returning is not null)
+        {
+            Empty(save, from, index);
+            returning.Keep(Snapshot.Of(pk, saveId, now));
+            returning.Summary = PokemonSummary.Of(pk);
+            returning.CheckedOut = null;
+            return TransferResult.Done(returning, from, null, [], [], returned: true);
+        }
+
         var slot = into ?? bank.FirstFreeSlot();
         if (slot is not { } target)
             return TransferResult.Refused("Every bank box is full.");
@@ -86,11 +166,16 @@ public static class Transfers
 
         var record = BankPokemon.From(pk, target, saveId, now);
         bank.Pokemon.Add(record);
-        if (from.IsParty)
+        Empty(save, from, index);
+        return TransferResult.Done(record, from, null, [], []);
+    }
+
+    static void Empty(SaveFile save, SaveSlot slot, int index)
+    {
+        if (slot.IsParty)
             save.DeletePartySlot(index);
         else
             save.SetBoxSlotAtIndex(save.BlankPKM, index, EntityImportSettings.None);
-        return TransferResult.Done(record, from, null, [], []);
     }
 
     /// <summary>
@@ -102,7 +187,9 @@ public static class Transfers
     /// save's format.
     /// </summary>
     /// <param name="saveId">The bank's ID for this save; it must be in <see cref="Bank.Saves"/>.</param>
-    public static TransferResult Withdraw(Bank bank, Guid pokemonId, SaveFile save, Guid saveId, DateTimeOffset now, SaveSlot? to = null)
+    /// <param name="moves">Which moveset it takes, when it has been in a game of this format before (<see cref="Movesets"/>).</param>
+    public static TransferResult Withdraw(Bank bank, Guid pokemonId, SaveFile save, Guid saveId, DateTimeOffset now,
+        SaveSlot? to = null, MovesetChoice moves = MovesetChoice.Newest)
     {
         if (bank.Saves.All(s => s.Id != saveId))
             throw new ArgumentException($"The bank doesn't know save {saveId}.", nameof(saveId));
@@ -123,7 +210,7 @@ public static class Transfers
                 ? save.PartyCount == 6 ? "The party is full." : $"The next free party slot is {save.PartyCount + 1}."
                 : $"{target} isn't empty.");
 
-        var built = Build(bank, record, save, now);
+        var built = Build(bank, record, save, now, moves);
         if (!built.Succeeded)
             return TransferResult.Refused(built.Refusal);
         var pk = built.Pokemon;
@@ -150,7 +237,8 @@ public static class Transfers
     }
 
     /// <summary>The Pokémon a withdraw would write, without writing it: the conversion and restore steps.</summary>
-    public static ConversionResult<PKM> Build(Bank bank, BankPokemon record, SaveFile save, DateTimeOffset now)
+    public static ConversionResult<PKM> Build(Bank bank, BankPokemon record, SaveFile save, DateTimeOffset now,
+        MovesetChoice moves = MovesetChoice.Newest)
     {
         var newest = record.Newest;
         var format = save.PKMType.Name;
@@ -166,11 +254,78 @@ public static class Transfers
         var pk = converted.Pokemon;
         if (record.SnapshotIn(format) is { } own)
         {
+            var ownPk = own.ToPkm();
             var newestGame = bank.Saves.Find(s => s.Id == newest.FromSave)?.Game ?? DefaultGame(newestPk);
-            FormatRestore.Apply(pk, newestPk, own.ToPkm(), newestGame, now, notes);
+            FormatRestore.Apply(pk, newestPk, ownPk, newestGame, now, notes);
             notes.RemoveAll(n => Restored(n, pk));
+            ChooseMoves(pk, newestPk, ownPk, moves, save.MaxMoveID, notes);
         }
         return Fit(pk, save, notes);
+    }
+
+    /// <summary>
+    /// The movesets a withdraw into <paramref name="save"/> can offer: the newest one (after the rule for moves
+    /// the game lacks), and the one it had last time in a game of this format when that's different.
+    /// </summary>
+    public static MovesetOptions Movesets(Bank bank, BankPokemon record, SaveFile save, DateTimeOffset now)
+    {
+        var built = Build(bank, record, save, now);
+        var newest = built.Succeeded ? Moveset.Of(built.Pokemon) : record.Summary.Moves;
+        var last = record.Newest.Format == save.PKMType.Name ? null : record.SnapshotIn(save.PKMType.Name);
+        var lastMoves = last is null ? (Moveset?)null : Moveset.Of(last.ToPkm());
+        return new MovesetOptions(newest, lastMoves == newest ? null : lastMoves);
+    }
+
+    /// <summary>
+    /// PLAN.md §5: moves follow the newest game by default. A newest move this game doesn't have is replaced by
+    /// the move in that slot from the last time it was here, or dropped; either way the summary says so. Or,
+    /// when the user picks it, the moveset it had here last time, as it was.
+    /// </summary>
+    static void ChooseMoves(PKM pk, PKM newest, PKM own, MovesetChoice choice, int maxMove, List<ConversionNote> notes)
+    {
+        notes.RemoveAll(n => n.Field == ChangedField.Moves);
+        var chosen = new List<(ushort Move, int PPUps, int PP)>();
+        if (choice == MovesetChoice.LastInThisGame)
+        {
+            for (var i = 0; i < 4; i++)
+                if (own.GetMove(i) is var move and not 0)
+                    chosen.Add((move, own.GetPPUps(i), own.GetPP(i)));
+        }
+        else
+        {
+            var known = Enumerable.Range(0, 4).Select(newest.GetMove).Where(m => m != 0 && m <= maxMove).ToHashSet();
+            for (var i = 0; i < 4; i++)
+            {
+                var move = newest.GetMove(i);
+                if (move == 0)
+                    continue;
+                if (move <= maxMove)
+                {
+                    chosen.Add((move, newest.GetPPUps(i), newest.GetPP(i)));
+                    continue;
+                }
+
+                var before = own.GetMove(i);
+                if (before is not 0 && before <= maxMove && !known.Contains(before) && chosen.All(c => c.Move != before))
+                {
+                    chosen.Add((before, own.GetPPUps(i), own.GetPP(i)));
+                    notes.Add(new(ChangeKind.Replaced, ChangedField.Moves,
+                        $"The move {EnglishNames.Move(move)} isn't in Gen {pk.Format}, so that slot gets back {EnglishNames.Move(before)}, the move it had there last time."));
+                }
+                else
+                {
+                    notes.Add(new(ChangeKind.Dropped, ChangedField.Moves, $"Dropped the move {EnglishNames.Move(move)} (not in Gen {pk.Format})."));
+                }
+            }
+        }
+
+        for (var i = 0; i < 4; i++)
+        {
+            var (move, ppUps, pp) = i < chosen.Count ? chosen[i] : ((ushort)0, 0, 0);
+            pk.SetMove(i, move);
+            pk.SetPPUps(i, ppUps);
+            pk.SetPP(i, move == 0 ? 0 : Math.Min(pp, pk.GetMovePP(move, ppUps)));
+        }
     }
 
     /// <summary>A note about something the restore step brought back no longer describes the result.</summary>

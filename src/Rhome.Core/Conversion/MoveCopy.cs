@@ -25,10 +25,10 @@ static class MoveCopy
                 continue;
             }
 
-            var ppUps = PPUps(from, i);
+            var ppUps = from.GetPPUps(i);
             to.SetMove(kept, move);
-            SetPPUps(to, kept, ppUps);
-            SetPP(to, kept, Math.Min(PP(from, i), to.GetMovePP(move, ppUps)));
+            to.SetPPUps(kept, ppUps);
+            to.SetPP(kept, Math.Min(from.GetPP(i), to.GetMovePP(move, ppUps)));
             kept++;
         }
     }
@@ -37,7 +37,7 @@ static class MoveCopy
     public static bool AnyUpTo(PKM pk, ushort maxMove) =>
         Enumerable.Range(0, 4).Select(pk.GetMove).Any(m => m is > 0 && m <= maxMove);
 
-    static int PPUps(PKM pk, int index) => index switch
+    public static int GetPPUps(this PKM pk, int index) => index switch
     {
         0 => pk.Move1_PPUps,
         1 => pk.Move2_PPUps,
@@ -45,7 +45,7 @@ static class MoveCopy
         _ => pk.Move4_PPUps,
     };
 
-    static void SetPPUps(PKM pk, int index, int value)
+    public static void SetPPUps(this PKM pk, int index, int value)
     {
         switch (index)
         {
@@ -56,7 +56,7 @@ static class MoveCopy
         }
     }
 
-    static int PP(PKM pk, int index) => index switch
+    public static int GetPP(this PKM pk, int index) => index switch
     {
         0 => pk.Move1_PP,
         1 => pk.Move2_PP,
@@ -64,7 +64,7 @@ static class MoveCopy
         _ => pk.Move4_PP,
     };
 
-    static void SetPP(PKM pk, int index, int value)
+    public static void SetPP(this PKM pk, int index, int value)
     {
         switch (index)
         {

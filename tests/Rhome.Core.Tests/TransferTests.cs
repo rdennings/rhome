@@ -6,37 +6,8 @@ namespace Rhome.Core.Tests;
 /// <summary>Import from a save and withdraw into a save (issue #18).</summary>
 public class TransferTests
 {
-    static readonly DateTimeOffset Monday = new(2026, 11, 9, 18, 30, 0, TimeSpan.FromHours(-5));
-    static readonly DateTimeOffset Tuesday = Monday.AddDays(1);
-
-    /// <summary>A fresh bank that knows these fixture saves, loaded fresh.</summary>
-    sealed class Setup
-    {
-        public Bank Bank { get; } = new();
-        readonly Dictionary<string, (SaveFile Save, Guid Id)> _saves = [];
-
-        public Setup(params string[] fixtures)
-        {
-            foreach (var name in fixtures)
-            {
-                var save = Fixtures.Load(name);
-                var record = new BankSave(Guid.NewGuid(), SaveDetector.GameOf(save),
-                    new TrainerInfo(save.OT, save.TID16, save.SID16), name, null);
-                Bank.Saves.Add(record);
-                _saves[name] = (save, record.Id);
-            }
-        }
-
-        public SaveFile Save(string name) => _saves[name].Save;
-
-        public Guid Id(string name) => _saves[name].Id;
-
-        public TransferResult Import(string name, SaveSlot slot, DateTimeOffset? when = null) =>
-            Transfers.Import(Bank, Save(name), Id(name), slot, when ?? Monday);
-
-        public TransferResult Withdraw(BankPokemon pokemon, string name, SaveSlot? slot = null, DateTimeOffset? when = null) =>
-            Transfers.Withdraw(Bank, pokemon.Id, Save(name), Id(name), when ?? Tuesday, slot);
-    }
+    static readonly DateTimeOffset Monday = TestBank.Monday;
+    static readonly DateTimeOffset Tuesday = TestBank.Tuesday;
 
     public static TheoryData<string> AllFixtures()
     {
@@ -50,7 +21,7 @@ public class TransferTests
     [MemberData(nameof(AllFixtures))]
     public void Every_box_Pokemon_imported_and_withdrawn_back_leaves_the_save_byte_identical(string fixture)
     {
-        var setup = new Setup(fixture);
+        var setup = new TestBank(fixture);
         var save = setup.Save(fixture);
         var original = save.Write().ToArray();
         var slots = SaveContents.Boxes(save).Select(s => s.Where).ToList();
@@ -67,7 +38,7 @@ public class TransferTests
     [MemberData(nameof(AllFixtures))]
     public void Every_party_Pokemon_comes_back_byte_identical(string fixture)
     {
-        var setup = new Setup(fixture);
+        var setup = new TestBank(fixture);
         var save = setup.Save(fixture);
         var party = SaveContents.Party(save).Select(s => s.Pokemon).ToList();
         if (party.Count < 2)
@@ -86,7 +57,7 @@ public class TransferTests
     [Fact]
     public void Importing_makes_a_bank_record_and_empties_the_slot()
     {
-        var setup = new Setup("platinum-us");
+        var setup = new TestBank("platinum-us");
         var kirlia = Fixtures.Box("platinum-us", 1, 3); // Gastly
 
         var result = Ok(setup.Import("platinum-us", new SaveSlot(1, 3)));
@@ -105,7 +76,7 @@ public class TransferTests
     [Fact]
     public void The_last_Pokemon_that_isnt_an_egg_cant_leave_the_party()
     {
-        var setup = new Setup("emerald");
+        var setup = new TestBank("emerald");
 
         var result = setup.Import("emerald", new SaveSlot(null, 1));
 
@@ -117,7 +88,7 @@ public class TransferTests
     [Fact]
     public void Importing_from_an_empty_or_missing_slot_is_refused()
     {
-        var setup = new Setup("platinum-us");
+        var setup = new TestBank("platinum-us");
 
         Assert.Contains("no Pokémon", setup.Import("platinum-us", new SaveSlot(1, 5)).Refusal);
         Assert.Contains("has no box 19", setup.Import("platinum-us", new SaveSlot(19, 1)).Refusal);
@@ -127,7 +98,7 @@ public class TransferTests
     [Fact]
     public void A_full_bank_refuses_an_import()
     {
-        var setup = new Setup("platinum-us");
+        var setup = new TestBank("platinum-us");
         setup.Bank.Boxes.Boxes.RemoveAll(b => b.Id != 1);
         var donor = SaveContents.Party(setup.Save("platinum-us"))[0].Pokemon;
         for (var slot = 1; slot <= BankBox.SlotCount; slot++)
@@ -139,7 +110,7 @@ public class TransferTests
     [Fact]
     public void A_Platinum_Pokemon_withdrawn_into_Emerald_is_converted_and_checked_out()
     {
-        var setup = new Setup("platinum-us", "emerald");
+        var setup = new TestBank("platinum-us", "emerald");
         var record = Ok(setup.Import("platinum-us", new SaveSlot(null, 1))).Pokemon!; // Kirlia
 
         var result = Ok(setup.Withdraw(record, "emerald"));
@@ -160,7 +131,7 @@ public class TransferTests
     [Fact]
     public void A_Pokemon_that_cant_exist_in_the_game_is_refused_and_nothing_changes()
     {
-        var setup = new Setup("platinum-us", "emerald");
+        var setup = new TestBank("platinum-us", "emerald");
         var luxray = Ok(setup.Import("platinum-us", new SaveSlot(null, 3))).Pokemon!;
         var emerald = setup.Save("emerald").Write().ToArray();
         var bank = BankJson.ToBytes(setup.Bank);
@@ -176,7 +147,7 @@ public class TransferTests
     public void A_form_the_game_lacks_is_refused_by_the_structural_check()
     {
         // Same format, different game: a Spiky-eared Pichu from SoulSilver can't go into Platinum.
-        var setup = new Setup("soulsilver", "platinum-us");
+        var setup = new TestBank("soulsilver", "platinum-us");
         var pichu = (PK4)Fixtures.Party("soulsilver", 1);
         pichu.Species = (ushort)Species.Pichu;
         pichu.Form = 1;
@@ -193,7 +164,7 @@ public class TransferTests
     [Fact]
     public void Withdrawing_into_a_taken_slot_or_a_full_party_is_refused()
     {
-        var setup = new Setup("platinum-us");
+        var setup = new TestBank("platinum-us");
         var record = Ok(setup.Import("platinum-us", new SaveSlot(1, 1))).Pokemon!;
 
         Assert.Equal("box 1 slot 2 isn't empty.", setup.Withdraw(record, "platinum-us", new SaveSlot(1, 2)).Refusal);
@@ -204,7 +175,7 @@ public class TransferTests
     [Fact]
     public void A_checked_out_Pokemon_cant_be_withdrawn_again()
     {
-        var setup = new Setup("platinum-us", "emerald");
+        var setup = new TestBank("platinum-us", "emerald");
         var record = Ok(setup.Import("platinum-us", new SaveSlot(null, 1))).Pokemon!;
         Ok(setup.Withdraw(record, "emerald"));
 
@@ -216,7 +187,7 @@ public class TransferTests
     {
         // The Kirlia went to Emerald and levelled up there. Back in Platinum it keeps its progress and gets
         // its Platinum met data, held item and Sinnoh ribbons back.
-        var setup = new Setup("platinum-us", "emerald");
+        var setup = new TestBank("platinum-us", "emerald");
         var kirlia = (PK4)Fixtures.Party("platinum-us", 1);
         kirlia.HeldItem = 112; // Griseous Orb: Gen 3 doesn't have it
         kirlia.RibbonChampionSinnoh = true;
@@ -257,7 +228,7 @@ public class TransferTests
     [InlineData(false, 0)]    // the player took them in Emerald → nothing, not a second pair
     public void A_held_item_the_other_game_could_hold_follows_that_game(bool keptInEmerald, int expected)
     {
-        var setup = new Setup("platinum-us", "emerald");
+        var setup = new TestBank("platinum-us", "emerald");
         var kirlia = (PK4)Fixtures.Party("platinum-us", 1);
         kirlia.HeldItem = 234; // Leftovers, in Gen 3 too
         kirlia.RefreshChecksum();
@@ -277,7 +248,7 @@ public class TransferTests
     [Fact]
     public void A_Gen_5_Pokemon_back_from_Gen_4_gets_its_hidden_ability_PID_and_nature_back()
     {
-        var setup = new Setup("white", "platinum-us");
+        var setup = new TestBank("white", "platinum-us");
         var eevee = (PK5)Fixtures.Party("white", 1);
         eevee.Species = (ushort)Species.Eevee;
         eevee.Gender = EntityGender.GetFromPID(eevee.Species, eevee.PID);
