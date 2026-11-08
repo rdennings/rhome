@@ -1,4 +1,5 @@
 using PKHeX.Core;
+using Rhome.Core;
 
 namespace Rhome.Cli;
 
@@ -7,33 +8,8 @@ static class Names
 {
     static readonly GameStrings Strings = GameInfo.GetStrings("en");
 
-    /// <summary>
-    /// The game, as precisely as the save tells. Paired games that share a layout only say which pair.
-    /// </summary>
-    public static string Game(GameVersion game) => game switch
-    {
-        GameVersion.R => "Ruby",
-        GameVersion.S => "Sapphire",
-        GameVersion.RS => "Ruby/Sapphire",
-        GameVersion.E => "Emerald",
-        GameVersion.FR => "FireRed",
-        GameVersion.LG => "LeafGreen",
-        GameVersion.FRLG => "FireRed/LeafGreen",
-        GameVersion.D => "Diamond",
-        GameVersion.P => "Pearl",
-        GameVersion.DP => "Diamond/Pearl",
-        GameVersion.Pt => "Platinum",
-        GameVersion.HG => "HeartGold",
-        GameVersion.SS => "SoulSilver",
-        GameVersion.HGSS => "HeartGold/SoulSilver",
-        GameVersion.B => "Black",
-        GameVersion.W => "White",
-        GameVersion.BW => "Black/White",
-        GameVersion.B2 => "Black 2",
-        GameVersion.W2 => "White 2",
-        GameVersion.B2W2 => "Black 2/White 2",
-        _ => game.ToString(),
-    };
+    /// <summary>The game, as precisely as the save tells. Paired games that share a layout only say which pair.</summary>
+    public static string Game(GameVersion game) => EnglishNames.Game(game);
 
     /// <summary>Species name, with the form when it isn't the plain one (Unown-F, Wormadam-Sandy, …).</summary>
     public static string Species(PKM pk)
