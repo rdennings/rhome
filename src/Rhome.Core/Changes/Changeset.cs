@@ -59,7 +59,7 @@ public sealed class Changeset
 }
 
 /// <summary>What one change does, for the pending-changes summary.</summary>
-/// <param name="Description">One line, e.g. "Withdraw Kirlia into Emerald (box 1 slot 2)".</param>
+/// <param name="Description">One line, e.g. "Withdraw Kirlia into Emerald, box 1 slot 2".</param>
 public sealed record ChangeOutcome(Change Change, string Description, IReadOnlyList<ConversionNote> Notes, IReadOnlyList<string> Bookkeeping);
 
 /// <summary>The outcome of previewing or applying a changeset.</summary>
@@ -248,7 +248,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
                 var result = Transfers.Import(bank, open[i.SaveId].Save, i.SaveId, i.From, now, i.Into, i.How);
                 if (!result.Succeeded)
                     return (null, result.Refusal, result.Candidates);
-                var what = $"{(result.Returned ? "Return" : "Import")} {Species(result.Pokemon)} from {Name(bank, i.SaveId)} ({i.From}) " +
+                var what = $"{(result.Returned ? "Return" : "Import")} {Species(result.Pokemon)} from {Name(bank, i.SaveId)}, {i.From}, " +
                            $"to {result.Pokemon.Slot}";
                 return (new ChangeOutcome(change, what, result.Notes, result.Bookkeeping), null, []);
             }
@@ -259,7 +259,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
                 var result = Transfers.Withdraw(bank, w.PokemonId, open[w.SaveId].Save, w.SaveId, now, w.To, w.Moves);
                 if (!result.Succeeded)
                     return (null, result.Refusal, []);
-                var what = $"Withdraw {Species(result.Pokemon)} into {Name(bank, w.SaveId)} ({result.SaveSlot})";
+                var what = $"Withdraw {Species(result.Pokemon)} into {Name(bank, w.SaveId)}, {result.SaveSlot}";
                 return (new ChangeOutcome(change, what, result.Notes, result.Bookkeeping), null, []);
             }
             case MoveInBankChange m:
