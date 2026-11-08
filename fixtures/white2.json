@@ -1,0 +1,19 @@
+{
+  "file": "white2.sav",
+  "game": "W2",
+  "generation": 5,
+  "trainer": {
+    "name": "TEST",
+    "tid": 32217,
+    "sid": 36232,
+    "gender": 1
+  },
+  "party": [
+    {
+      "slot": 1,
+      "species": "Oshawott",
+      "level": 6
+    }
+  ],
+  "boxes": []
+}

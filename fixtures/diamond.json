@@ -1,0 +1,19 @@
+{
+  "file": "diamond.sav",
+  "game": "DP",
+  "generation": 4,
+  "trainer": {
+    "name": "TEST",
+    "tid": 5490,
+    "sid": 43502,
+    "gender": 1
+  },
+  "party": [
+    {
+      "slot": 1,
+      "species": "Monferno",
+      "level": 14
+    }
+  ],
+  "boxes": []
+}

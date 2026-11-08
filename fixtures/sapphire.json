@@ -1,0 +1,19 @@
+{
+  "file": "sapphire.sav",
+  "game": "RS",
+  "generation": 3,
+  "trainer": {
+    "name": "TEST",
+    "tid": 8747,
+    "sid": 3584,
+    "gender": 1
+  },
+  "party": [
+    {
+      "slot": 1,
+      "species": "Mudkip",
+      "level": 11
+    }
+  ],
+  "boxes": []
+}
