@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Rhome.Core/Rhome.Core.csproj" />
+    <ProjectReference Include="../../src/Rhome.FileSystem/Rhome.FileSystem.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Rhome.Cli.Tests" />

@@ -38,7 +38,7 @@ public static class SaveDetector
     /// The game as far as the save can tell. FireRed and LeafGreen share one save layout, and PKHeX
     /// reports such a save as FireRed until told otherwise, so call it FRLG rather than guess.
     /// </summary>
-    static GameVersion GameOf(SaveFile sav) => sav is SAV3FRLG ? GameVersion.FRLG : sav.Version;
+    public static GameVersion GameOf(SaveFile sav) => sav is SAV3FRLG ? GameVersion.FRLG : sav.Version;
 
     /// <summary>
     /// Tier 1 = the mainline GBA and DS games: Ruby to Emerald and FireRed/LeafGreen (SAV3), Diamond to

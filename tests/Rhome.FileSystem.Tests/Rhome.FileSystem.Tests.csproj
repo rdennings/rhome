@@ -12,4 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Rhome.FileSystem/Rhome.FileSystem.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Test saves (fixtures/README.md), for the end-to-end changeset test. -->
+    <None Include="../../fixtures/*.sav" LinkBase="fixtures" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
