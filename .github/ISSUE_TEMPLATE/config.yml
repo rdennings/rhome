@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Chat on Discord
+    url: https://discord.gg/Uq87sx6szh
+    about: Quick questions, ideas and general chat about rhome.
   - name: Questions and ideas
     url: https://github.com/rdennings/rhome/discussions
     about: Ask questions or float ideas in Discussions.
