@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Command-line tool that drives the core with no UI (PLAN.md §3, M1). Desktop only: it reads
+       files straight from disk, which the core itself never does. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>rhome</AssemblyName>
+    <RootNamespace>Rhome.Cli</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Rhome.Core/Rhome.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rhome.Cli.Tests" />
+  </ItemGroup>
+</Project>

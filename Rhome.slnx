@@ -3,9 +3,11 @@
     <Project Path="src/Rhome.Core/Rhome.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Rhome.Cli.Tests/Rhome.Cli.Tests.csproj" />
     <Project Path="tests/Rhome.Core.Tests/Rhome.Core.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/Rhome.Cli/Rhome.Cli.csproj" />
     <Project Path="tools/Rhome.FixtureScrubber/Rhome.FixtureScrubber.csproj" />
   </Folder>
 </Solution>

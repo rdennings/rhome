@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="PKHeX.Core" Version="26.10.18" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.14" />
 
     <!-- Tests -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
