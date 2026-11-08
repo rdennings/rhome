@@ -1,0 +1,19 @@
+{
+  "file": "leafgreen.sav",
+  "game": "FRLG",
+  "generation": 3,
+  "trainer": {
+    "name": "TEST",
+    "tid": 11317,
+    "sid": 18121,
+    "gender": 1
+  },
+  "party": [
+    {
+      "slot": 1,
+      "species": "Bulbasaur",
+      "level": 11
+    }
+  ],
+  "boxes": []
+}

@@ -1,0 +1,19 @@
+{
+  "file": "soulsilver.sav",
+  "game": "SS",
+  "generation": 4,
+  "trainer": {
+    "name": "TEST",
+    "tid": 17932,
+    "sid": 42973,
+    "gender": 1
+  },
+  "party": [
+    {
+      "slot": 1,
+      "species": "Cyndaquil",
+      "level": 11
+    }
+  ],
+  "boxes": []
+}

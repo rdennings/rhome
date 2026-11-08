@@ -47,7 +47,7 @@ public sealed class Scrubber
         var problems = new List<string>();
 
         var sav = Load(original) ?? throw new InvalidDataException("PKHeX doesn't recognize this save.");
-        if (sav is not (SAV3 or SAV4 or SAV5BW))
+        if (sav is not (SAV3 or SAV4 or SAV5))
             throw new NotSupportedException(
                 $"{sav.GetType().Name} isn't handled yet: where its backup copy lives hasn't been checked on a real save.");
 
@@ -140,12 +140,12 @@ public sealed class Scrubber
             }
         }
 
-        if (sav is SAV5BW bw)
+        if (sav is SAV5 gen5)
         {
             for (int i = 0; i < BattleBox5.Count; i++)
             {
                 // Empty slots are encrypted too, so they aren't all zeros: decrypt to check.
-                if (bw.GetDecryptedPKM(bw.BattleBox.GetSlot(i).ToArray()).Species != 0)
+                if (gen5.GetDecryptedPKM(gen5.BattleBox.GetSlot(i).ToArray()).Species != 0)
                     problems.Add($"Battle Box slot {i + 1} is used; empty the Battle Box in-game first");
             }
         }
@@ -245,15 +245,26 @@ public sealed class Scrubber
                 foreach (var (start, size) in Gen4Blocks(gen4))
                     MirrorGen4Block(data, start, size);
                 break;
-            case SAV5BW:
-                // Black/White mirror the first 0x24000 bytes right after them.
-                data.AsSpan(0, Gen5BackupOffset).CopyTo(data.AsSpan(Gen5BackupOffset));
+            case SAV5 gen5:
+                // Gen 5 mirrors its main data right after it.
+                var mainSize = Gen5BackupOffset(gen5);
+                data.AsSpan(0, mainSize).CopyTo(data.AsSpan(mainSize));
                 break;
         }
     }
 
     const int Gen4HalfSize = 0x40000;
-    const int Gen5BackupOffset = 0x24000;
+
+    /// <summary>
+    /// Where Gen 5's backup copy starts, which is also the size of the main data before it: 0x24000 for
+    /// Black/White, 0x26000 for Black 2/White 2 (checked on a real White 2 save, 2026-11-08).
+    /// </summary>
+    static int Gen5BackupOffset(SAV5 sav) => sav switch
+    {
+        SAV5BW => 0x24000,
+        SAV5B2W2 => 0x26000,
+        _ => throw new NotSupportedException(sav.GetType().Name),
+    };
 
     /// <summary>Gen 4 saves have two blocks (general and storage); each has its own copy in each half.</summary>
     static (int Start, int Size)[] Gen4Blocks(SAV4 sav) => sav switch
@@ -350,8 +361,9 @@ public sealed class Scrubber
                         problems.Add($"Gen 4 block at 0x{start:X} differs from its backup");
                 }
                 break;
-            case SAV5BW:
-                if (!data.AsSpan(0, Gen5BackupOffset).SequenceEqual(data.AsSpan(Gen5BackupOffset, Gen5BackupOffset)))
+            case SAV5 gen5:
+                var mainSize = Gen5BackupOffset(gen5);
+                if (!data.AsSpan(0, mainSize).SequenceEqual(data.AsSpan(mainSize, mainSize)))
                     problems.Add("Gen 5 data differs from its backup");
                 break;
         }

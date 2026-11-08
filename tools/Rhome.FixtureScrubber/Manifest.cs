@@ -31,7 +31,7 @@ public sealed record FixtureManifest(
 
         return new FixtureManifest(
             file,
-            sav.Version.ToString(),
+            sav is SAV3FRLG ? "FRLG" : sav.Version.ToString(), // PKHeX guesses FireRed; the save can't tell.
             sav.Generation,
             new FixtureTrainer(sav.OT, sav.TID16, sav.SID16, sav.Gender),
             party,

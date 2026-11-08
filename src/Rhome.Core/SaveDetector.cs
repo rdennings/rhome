@@ -3,7 +3,7 @@ using PKHeX.Core;
 namespace Rhome.Core;
 
 /// <summary>A save file recognized from its bytes.</summary>
-/// <param name="Game">The game, as precisely as the save tells (Gen 3 Ruby/Sapphire saves may only say "RS").</param>
+/// <param name="Game">The game, as precisely as the save tells: paired games that share a layout may only say "RS", "FRLG" or "DP".</param>
 /// <param name="Generation">3 for GBA games, 4 and 5 for DS games, and so on.</param>
 /// <param name="IsSupported">True for the games rhome can work with today (the MVP's Tier 1: every GBA and DS game).</param>
 public sealed record DetectedSave(
@@ -31,8 +31,14 @@ public static class SaveDetector
         if (!SaveUtil.TryGetSaveFile(data.ToArray(), out var sav) || sav is null)
             return null;
 
-        return new DetectedSave(sav.Version, sav.Generation, sav.OT, IsSupported(sav), sav);
+        return new DetectedSave(GameOf(sav), sav.Generation, sav.OT, IsSupported(sav), sav);
     }
+
+    /// <summary>
+    /// The game as far as the save can tell. FireRed and LeafGreen share one save layout, and PKHeX
+    /// reports such a save as FireRed until told otherwise, so call it FRLG rather than guess.
+    /// </summary>
+    static GameVersion GameOf(SaveFile sav) => sav is SAV3FRLG ? GameVersion.FRLG : sav.Version;
 
     /// <summary>
     /// Tier 1 = the mainline GBA and DS games: Ruby to Emerald and FireRed/LeafGreen (SAV3), Diamond to
