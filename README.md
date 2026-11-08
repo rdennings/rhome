@@ -45,6 +45,16 @@ dotnet test --solution Rhome.slnx
 
 That builds the core (`src/Rhome.Core`) and runs its tests (`tests/`). The Android app isn't in the solution yet; the experiments that proved it works are in [`spikes/`](spikes/).
 
+### Command line
+
+`tools/Rhome.Cli` drives the core without a UI. For now it only reads: it lists what a GBA or DS save holds and never changes the file.
+
+```bash
+dotnet run --project tools/Rhome.Cli -- save show fixtures/platinum-us.sav
+```
+
+Bank, import and withdraw commands join it as the M1 core pieces land.
+
 ## Contributing
 
 Contributions and ideas are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; the short version is to open an issue or discussion before starting on anything big.

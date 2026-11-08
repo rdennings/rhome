@@ -53,7 +53,7 @@ public class FixtureTests
         var manifest = LoadManifest(name);
         var save = SaveDetector.Detect(LoadSave(manifest))!.Save;
 
-        var party = save.PartyData.Select((pk, i) => Describe(save, pk, null, i + 1));
+        var party = SaveContents.Party(save).Select(s => Describe(save, s));
 
         Assert.Equal(manifest.Party, party);
     }
@@ -65,10 +65,7 @@ public class FixtureTests
         var manifest = LoadManifest(name);
         var save = SaveDetector.Detect(LoadSave(manifest))!.Save;
 
-        var boxes = save.BoxData
-            .Select((pk, i) => (pk, i))
-            .Where(t => t.pk.Species != 0)
-            .Select(t => Describe(save, t.pk, t.i / save.BoxSlotCount + 1, t.i % save.BoxSlotCount + 1));
+        var boxes = SaveContents.Boxes(save).Select(s => Describe(save, s));
 
         Assert.Equal(manifest.Boxes, boxes);
     }
@@ -97,8 +94,11 @@ public class FixtureTests
         Assert.Equal(new Ot(platinum.Name, platinum.Tid, platinum.Sid), kirlia.Ot);
     }
 
-    static Pokemon Describe(SaveFile save, PKM pk, int? box, int slot)
+    static Pokemon Describe(SaveFile save, SlotContents found)
     {
+        var (box, slot) = (found.Where.Box, found.Where.Slot);
+        var pk = found.Pokemon;
+        // Worked out here rather than with SaveContents.IsFromThisTrainer, so the manifest check stays independent.
         var sameOt = pk.OriginalTrainerName == save.OT && pk.ID32 == save.ID32;
         return new Pokemon(
             box,
