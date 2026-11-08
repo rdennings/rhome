@@ -172,7 +172,7 @@ public class Gen5To4Tests
         Assert.Equal(personal.GetAbilityAtIndex((int)(pk5.PID & 1)), pk4.Ability);
         Assert.Equal((int)(pk5.PID & 1), (int)(pk4.PID & 1));
         Assert.Equal(
-            $"The hidden ability Anticipation becomes {EnglishNames(pk4.Ability)} (Gen 4 has no hidden abilities).",
+            $"The hidden ability Anticipation becomes {Rhome.Core.EnglishNames.Ability(pk4.Ability)} (Gen 4 has no hidden abilities).",
             Note(result, ChangedField.Ability).Message);
     }
 
@@ -368,8 +368,6 @@ public class Gen5To4Tests
         Assert.Equal("Luxray doesn't exist in the Gen 3 games.",
             Downgrade.Gen5ToGen3(WhiteCaught(Species.Luxray), GameVersion.E).Refusal);
     }
-
-    static string EnglishNames(int ability) => GameInfo.GetStrings("en").abilitylist[ability];
 
     static byte[] StoredBytes(PKM pk)
     {
