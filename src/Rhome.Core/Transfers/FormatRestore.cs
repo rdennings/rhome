@@ -51,6 +51,15 @@ public static class FormatRestore
             result.IsNicknamed = true;
             result.Nickname = snapshot.Nickname; // e.g. characters the older game had to show as '?'
         }
+        else if (!snapshot.IsNicknamed && !newest.IsNicknamed)
+        {
+            // Never nicknamed: the name it had here (a Gen 5 "Kirlia" rather than Gen 4's "KIRLIA"), or, if it
+            // evolved while away, its new species' name the way this game writes it, as evolving here would.
+            result.IsNicknamed = false;
+            result.Nickname = result.Species == snapshot.Species
+                ? snapshot.Nickname
+                : SpeciesName.GetSpeciesNameGeneration(result.Species, result.Language, result.Format);
+        }
         if (outbound.OriginalTrainerName == newest.OriginalTrainerName)
             result.OriginalTrainerName = snapshot.OriginalTrainerName;
 
