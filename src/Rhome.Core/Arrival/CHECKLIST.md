@@ -51,7 +51,8 @@ The tests check that arrival changes nothing in a save but the Pokédex block (`
 
 | Game | Pokédex shows it as owned | Seen count right | Unown/Spinda | Save + reload | Checked |
 |---|---|---|---|---|---|
-| Emerald | ✅ (prototype, Kirlia from Platinum) | ✅ (prototype) | ❓ | ✅ (prototype) | prototype, before rhome |
-| Platinum | ❓ | ❓ | ❓ | ❓ | not yet |
-| White | ❓ | ❓ | ❓ | ❓ | not yet |
-| Ruby/Sapphire, FireRed/LeafGreen, Diamond/Pearl, HeartGold/SoulSilver, Black 2/White 2 | ❓ | ❓ | ❓ | ❓ | M3 |
+| Emerald | ✅ owned and seen flags set and kept by the game's own save; Togepi isn't in the Hoenn Pokédex, so the count waits for the National Pokédex, as after a trade | ✅ (prototype) | ❓ | ✅ | 2026-11-08, rhome CLI: Togepi from Platinum. It battled and reached Lv 2. Found and fixed: it showed as level 0 and met at Lv 5 ([`Hatching`](../Conversion/Hatching.cs)) |
+| Platinum | ✅ Togepi (back from Emerald), Riolu (from White 2) | ✅ Riolu was new: seen 70 → 71, owned 14 → 15 | ❓ | ✅ | 2026-11-08, rhome CLI: Togepi back from Emerald at Lv 2 with its own met and egg data; Riolu from White 2, Jolly kept with a new PID, met in a faraway place, battled to Lv 9 |
+| White 2 | ✅ (Riolu, back from Platinum) | ❓ not exercised: Riolu was already owned | ❓ | ✅ | 2026-11-08, rhome CLI: Riolu back from Platinum at Lv 9 with its original PID and Floccesy Ranch met data; PKHeX rates it legal. It battled |
+| White | ❓ | ❓ | ❓ | ❓ | waiting: White has no pre-Unova species before the Elite Four, so a test Pokémon can't start there yet |
+| Ruby/Sapphire, FireRed/LeafGreen, Diamond/Pearl, HeartGold/SoulSilver, Black 2 | ❓ | ❓ | ❓ | ❓ | M3 |
