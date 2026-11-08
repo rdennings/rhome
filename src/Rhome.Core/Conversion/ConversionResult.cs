@@ -25,6 +25,9 @@ public enum ChangedField
     TrainerName,
     MetData,
     Ribbons,
+
+    /// <summary>The PID. Only a Gen 5 Pokémon going to Gen 4 or 3 gets a new one, to keep its nature.</summary>
+    PersonalityValue,
     Other,
 }
 
@@ -68,19 +71,4 @@ public sealed class ConversionResult<T> where T : PKM
     public static ConversionResult<T> Converted(T pokemon, IReadOnlyList<ConversionNote> notes) => new(pokemon, null, notes);
 
     public static ConversionResult<T> Refused(string reason) => new(null, reason, []);
-
-    /// <summary>
-    /// Runs the next step of a chain (Gen 5 → 4 → 3) on the converted Pokémon, keeping this step's notes ahead
-    /// of the next one's. A refusal anywhere refuses the whole chain.
-    /// </summary>
-    public ConversionResult<TNext> Then<TNext>(Func<T, ConversionResult<TNext>> next) where TNext : PKM
-    {
-        if (!Succeeded)
-            return ConversionResult<TNext>.Refused(Refusal);
-
-        var result = next(Pokemon);
-        return result.Succeeded
-            ? ConversionResult<TNext>.Converted(result.Pokemon, [.. Notes, .. result.Notes])
-            : result;
-    }
 }

@@ -105,14 +105,10 @@ public static class Gen4To3
             return $"This {name} has no valid language, so rhome can't tell how to write its name in Gen 3.";
         if (EntityGender.GetFromPID(species, pk4.PID) != pk4.Gender)
             return $"This {name}'s gender would change in Gen 3, where it comes from its personality value.";
-        if (!HasGen3Move(pk4))
+        if (!MoveCopy.AnyUpTo(pk4, MaxMove))
             return $"None of this {name}'s moves exist in Gen 3, and a Pokémon needs at least one.";
         return null;
     }
-
-    static bool HasGen3Move(PK4 pk4) =>
-        pk4.Move1 is > 0 and <= MaxMove || pk4.Move2 is > 0 and <= MaxMove
-        || pk4.Move3 is > 0 and <= MaxMove || pk4.Move4 is > 0 and <= MaxMove;
 
     /// <summary>The game to record as the origin, or null when <paramref name="game"/> isn't a Gen 3 game.</summary>
     static GameVersion? Gen3Game(GameVersion game) => game switch
@@ -133,45 +129,22 @@ public static class Gen4To3
         // unnamed one gets the Gen 3 species name (all capitals in English, like the GBA games).
         var nickReplaced = "";
         var nickname = pk4.IsNicknamed
-            ? Gen3Text.Fit(pk4.Nickname, language, japanese ? 5 : 10, out nickReplaced)
+            ? GameText.Fit(pk4.Nickname, japanese ? 5 : 10, c => GameText.Gen3CanShow(c, language), out nickReplaced)
             : SpeciesName.GetSpeciesNameGeneration(pk4.Species, language, 3);
         if (nickReplaced.Length > 0)
             notes.Add(new(ChangeKind.Replaced, ChangedField.Nickname,
-                $"The nickname \"{pk4.Nickname}\" becomes \"{nickname}\": Gen 3 can't show {Quote(nickReplaced)}."));
-        Gen3Text.Write(pk3.NicknameTrash, nickname, language);
+                $"The nickname \"{pk4.Nickname}\" becomes \"{nickname}\": Gen 3 can't show {GameText.Quote(nickReplaced)}."));
+        GameText.WriteGen3(pk3.NicknameTrash, nickname, language);
 
-        var trainer = Gen3Text.Fit(pk4.OriginalTrainerName, language, japanese ? 5 : 7, out var otReplaced);
+        var trainer = GameText.Fit(pk4.OriginalTrainerName, japanese ? 5 : 7, c => GameText.Gen3CanShow(c, language), out var otReplaced);
         if (otReplaced.Length > 0)
             notes.Add(new(ChangeKind.Replaced, ChangedField.TrainerName,
-                $"The trainer name \"{pk4.OriginalTrainerName}\" becomes \"{trainer}\": Gen 3 can't show {Quote(otReplaced)}."));
-        Gen3Text.Write(pk3.OriginalTrainerTrash, trainer, language);
+                $"The trainer name \"{pk4.OriginalTrainerName}\" becomes \"{trainer}\": Gen 3 can't show {GameText.Quote(otReplaced)}."));
+        GameText.WriteGen3(pk3.OriginalTrainerTrash, trainer, language);
     }
 
-    static string Quote(string characters) => string.Join(", ", characters.Select(c => $"'{c}'"));
-
-    static void CopyMoves(PK4 pk4, PK3 pk3, List<ConversionNote> notes)
-    {
-        // Moves Gen 3 doesn't have are dropped, and the rest move up so there are no gaps, as in the games.
-        var kept = 0;
-        for (var i = 0; i < 4; i++)
-        {
-            var move = pk4.GetMove(i);
-            if (move == 0)
-                continue;
-            if (move > MaxMove)
-            {
-                notes.Add(new(ChangeKind.Dropped, ChangedField.Moves,
-                    $"Dropped the move {EnglishNames.Move(move)} (not in Gen 3)."));
-                continue;
-            }
-
-            var ppUps = PPUps(pk4, i);
-            pk3.SetMove(kept, move);
-            SetPPUps(pk3, kept, ppUps);
-            SetPP(pk3, kept, Math.Min(PP(pk4, i), pk3.GetMovePP(move, ppUps)));
-            kept++;
-        }
-    }
+    // Moves Gen 3 doesn't have are dropped, and the rest move up so there are no gaps, as in the games.
+    static void CopyMoves(PK4 pk4, PK3 pk3, List<ConversionNote> notes) => MoveCopy.Copy(pk4, pk3, MaxMove, 3, notes);
 
     static void CopyHeldItem(PK4 pk4, PK3 pk3, List<ConversionNote> notes)
     {
@@ -296,43 +269,5 @@ public static class Gen4To3
         if (pk4.Species == (ushort)PKHeX.Core.Species.Deoxys && pk4.Form != 0)
             notes.Add(new(ChangeKind.Replaced, ChangedField.Form,
                 "Deoxys takes the form the Gen 3 game it's in shows (Gen 3 doesn't store a form)."));
-    }
-
-    static int PPUps(PKM pk, int index) => index switch
-    {
-        0 => pk.Move1_PPUps,
-        1 => pk.Move2_PPUps,
-        2 => pk.Move3_PPUps,
-        _ => pk.Move4_PPUps,
-    };
-
-    static void SetPPUps(PKM pk, int index, int value)
-    {
-        switch (index)
-        {
-            case 0: pk.Move1_PPUps = value; break;
-            case 1: pk.Move2_PPUps = value; break;
-            case 2: pk.Move3_PPUps = value; break;
-            default: pk.Move4_PPUps = value; break;
-        }
-    }
-
-    static int PP(PKM pk, int index) => index switch
-    {
-        0 => pk.Move1_PP,
-        1 => pk.Move2_PP,
-        2 => pk.Move3_PP,
-        _ => pk.Move4_PP,
-    };
-
-    static void SetPP(PKM pk, int index, int value)
-    {
-        switch (index)
-        {
-            case 0: pk.Move1_PP = value; break;
-            case 1: pk.Move2_PP = value; break;
-            case 2: pk.Move3_PP = value; break;
-            default: pk.Move4_PP = value; break;
-        }
     }
 }
