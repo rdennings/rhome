@@ -1,0 +1,59 @@
+namespace Rhome.Core;
+
+/// <summary>A place in the bank.</summary>
+/// <param name="Box">The box's <see cref="BankBox.Id"/>, not its position, so reordering boxes moves no Pokémon.</param>
+/// <param name="Slot">The slot in that box, 1–30.</param>
+public readonly record struct BankSlot(int Box, int Slot)
+{
+    public override string ToString() => $"bank box {Box} slot {Slot}";
+}
+
+/// <summary>
+/// One bank box. Which Pokémon sit in it is recorded on each Pokémon (<see cref="BankPokemon.Slot"/>), by
+/// the box's ID, so renaming or reordering a box never touches the Pokémon in it.
+/// </summary>
+public sealed class BankBox
+{
+    /// <summary>Every bank box has 30 slots, like the GBA and DS games.</summary>
+    public const int SlotCount = 30;
+
+    /// <summary>The box's permanent ID within its group. Never changes, wherever the box is moved to.</summary>
+    public required int Id { get; init; }
+
+    public required string Name { get; set; }
+}
+
+/// <summary>A named set of boxes. The MVP has one; more groups are a later idea.</summary>
+public sealed class BoxGroup
+{
+    /// <summary>
+    /// How many boxes a new bank starts with. Ten is plenty while testing; plan to raise it to around 100
+    /// before launch (M3).
+    /// </summary>
+    public const int DefaultBoxCount = 10;
+
+    public string Name { get; set; } = "Bank";
+
+    /// <summary>The boxes in the order the user sees them. Reorder freely: Pokémon follow their box's ID.</summary>
+    public List<BankBox> Boxes { get; init; } = [];
+
+    /// <summary>The box with this ID, or null when there's none.</summary>
+    public BankBox? Box(int id) => Boxes.Find(b => b.Id == id);
+
+    /// <summary>Adds a box at the end, with an ID no other box in the group has.</summary>
+    public BankBox Add(string name)
+    {
+        var box = new BankBox { Id = Boxes.Count == 0 ? 1 : Boxes.Max(b => b.Id) + 1, Name = name };
+        Boxes.Add(box);
+        return box;
+    }
+
+    /// <summary>A group of <see cref="DefaultBoxCount"/> boxes: ID 1 named "Box 1", ID 2 named "Box 2" and so on.</summary>
+    public static BoxGroup CreateDefault()
+    {
+        var group = new BoxGroup();
+        for (var i = 1; i <= DefaultBoxCount; i++)
+            group.Add($"Box {i}");
+        return group;
+    }
+}

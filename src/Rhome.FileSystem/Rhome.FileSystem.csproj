@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Platform I/O on a plain file system (PLAN.md §4): Linux, Windows, Mac, and an Android app's own
+       private storage. The core hands its bytes to this layer and never sees a path. -->
+  <ItemGroup>
+    <ProjectReference Include="../Rhome.Core/Rhome.Core.csproj" />
+  </ItemGroup>
+</Project>

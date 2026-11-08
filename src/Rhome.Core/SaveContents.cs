@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using PKHeX.Core;
 
 namespace Rhome.Core;
@@ -9,6 +10,7 @@ namespace Rhome.Core;
 /// <param name="Slot">The slot in the party (1–6) or in the box (1–30).</param>
 public readonly record struct SaveSlot(int? Box, int Slot)
 {
+    [JsonIgnore]
     public bool IsParty => Box is null;
 
     public override string ToString() => Box is { } box ? $"box {box} slot {Slot}" : $"party slot {Slot}";
