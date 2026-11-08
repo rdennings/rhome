@@ -6,13 +6,15 @@ namespace Rhome.Core;
 /// <summary>The outcome of an import or withdraw: what happened, or why nothing did.</summary>
 public sealed class TransferResult
 {
-    TransferResult(BankPokemon? pokemon, SaveSlot? saveSlot, PKM? written, string? refusal, IReadOnlyList<ConversionNote> notes)
+    TransferResult(BankPokemon? pokemon, SaveSlot? saveSlot, PKM? written, string? refusal,
+        IReadOnlyList<ConversionNote> notes, IReadOnlyList<string> bookkeeping)
     {
         Pokemon = pokemon;
         SaveSlot = saveSlot;
         Written = written;
         Refusal = refusal;
         Notes = notes;
+        Bookkeeping = bookkeeping;
     }
 
     /// <summary>The bank record that was created (import) or checked out (withdraw).</summary>
@@ -30,14 +32,18 @@ public sealed class TransferResult
     /// <summary>Everything that was dropped or replaced on the way, for the pending-changes summary.</summary>
     public IReadOnlyList<ConversionNote> Notes { get; }
 
+    /// <summary>What the arrival bookkeeping changed in the save (withdraw only), e.g. the Pokédex.</summary>
+    public IReadOnlyList<string> Bookkeeping { get; }
+
     [MemberNotNullWhen(true, nameof(Pokemon), nameof(SaveSlot))]
     [MemberNotNullWhen(false, nameof(Refusal))]
     public bool Succeeded => Refusal is null;
 
-    internal static TransferResult Done(BankPokemon pokemon, SaveSlot slot, PKM? written, IReadOnlyList<ConversionNote> notes) =>
-        new(pokemon, slot, written, null, notes);
+    internal static TransferResult Done(BankPokemon pokemon, SaveSlot slot, PKM? written,
+        IReadOnlyList<ConversionNote> notes, IReadOnlyList<string> bookkeeping) =>
+        new(pokemon, slot, written, null, notes, bookkeeping);
 
-    internal static TransferResult Refused(string reason) => new(null, null, null, reason, []);
+    internal static TransferResult Refused(string reason) => new(null, null, null, reason, [], []);
 }
 
 /// <summary>
@@ -84,15 +90,16 @@ public static class Transfers
             save.DeletePartySlot(index);
         else
             save.SetBoxSlotAtIndex(save.BlankPKM, index, EntityImportSettings.None);
-        return TransferResult.Done(record, from, null, []);
+        return TransferResult.Done(record, from, null, [], []);
     }
 
     /// <summary>
     /// Sends a bank Pokémon into the save, converted to the save's format (PLAN.md §5): from its newest snapshot,
     /// forward with PKHeX or backward with rhome's converters, then with the format's own fields restored from
     /// the snapshot it had in that format. It goes into <paramref name="to"/> (the next party slot, or an empty
-    /// box slot), or the first empty box slot. Its bank slot stays as a checked-out placeholder, and the written
-    /// Pokémon is kept as its snapshot in the save's format.
+    /// box slot), or the first empty box slot, and the game's arrival bookkeeping is done (<see cref="Arrival"/>).
+    /// Its bank slot stays as a checked-out placeholder, and the written Pokémon is kept as its snapshot in the
+    /// save's format.
     /// </summary>
     /// <param name="saveId">The bank's ID for this save; it must be in <see cref="Bank.Saves"/>.</param>
     public static TransferResult Withdraw(Bank bank, Guid pokemonId, SaveFile save, Guid saveId, DateTimeOffset now, SaveSlot? to = null)
@@ -128,15 +135,18 @@ public static class Transfers
         if (!pk.ChecksumValid)
             throw new InvalidOperationException("rhome built a Pokémon with a bad checksum; nothing was written.");
 
+        // PKHeX's own write hooks stay off: arrival bookkeeping is done explicitly, so it can say what it did.
+        var bookkeeping = Arrival.Adapt(save, pk).ToList();
         if (target.IsParty)
             save.SetPartySlotAtIndex(pk, index, EntityImportSettings.None);
         else
             save.SetBoxSlotAtIndex(pk, index, EntityImportSettings.None);
+        bookkeeping.AddRange(Arrival.Record(save, pk));
 
         record.Keep(Snapshot.Of(pk, saveId, now));
         record.Summary = PokemonSummary.Of(pk);
         record.CheckedOut = new CheckOut(saveId, target);
-        return TransferResult.Done(record, target, pk, built.Notes);
+        return TransferResult.Done(record, target, pk, built.Notes, bookkeeping);
     }
 
     /// <summary>The Pokémon a withdraw would write, without writing it: the conversion and restore steps.</summary>
