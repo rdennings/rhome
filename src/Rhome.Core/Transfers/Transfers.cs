@@ -260,7 +260,25 @@ public static class Transfers
             notes.RemoveAll(n => Restored(n, pk));
             ChooseMoves(pk, newestPk, ownPk, moves, save.MaxMoveID, notes);
         }
+        KeepFullPP(pk, newestPk);
         return Fit(pk, save, notes);
+    }
+
+    /// <summary>
+    /// A move whose PP was full stays full. A few moves have less PP in older games, so without this a move
+    /// that went to Gen 3 at full PP would come home short.
+    /// </summary>
+    static void KeepFullPP(PKM pk, PKM newest)
+    {
+        for (var i = 0; i < 4; i++)
+        {
+            var move = pk.GetMove(i);
+            var j = move == 0 ? -1 : newest.GetMoveIndex(move);
+            if (j < 0)
+                continue;
+            if (newest.GetPP(j) == newest.GetMovePP(move, newest.GetPPUps(j)))
+                pk.SetPP(i, pk.GetMovePP(move, pk.GetPPUps(i)));
+        }
     }
 
     /// <summary>
