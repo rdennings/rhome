@@ -42,7 +42,8 @@ public static class Gen4To3
             TID16 = pk4.TID16,
             SID16 = pk4.SID16,
             Language = pk4.Language,
-            EXP = pk4.EXP,
+            // A level 1 Pokémon can have 0 EXP in Gen 4, but Gen 3 would show it as level 0 (see Hatching).
+            EXP = Math.Max(pk4.EXP, Hatching.MinimumExp(3)),
             OriginalTrainerFriendship = pk4.OriginalTrainerFriendship,
             OriginalTrainerGender = pk4.OriginalTrainerGender,
             MarkingValue = (byte)(pk4.MarkingValue & 0b1111), // Gen 3 has four markings, Gen 4 six
@@ -66,7 +67,9 @@ public static class Gen4To3
             ContestSmart = pk4.ContestSmart,
             ContestTough = pk4.ContestTough,
             ContestSheen = pk4.ContestSheen,
-            MetLevel = pk4.MetLevel,
+            // Gen 4 records a hatched Pokémon as met at level 0, which Gen 3 would show as its own hatch level,
+            // 5 (see Hatching). It shows as met in a fateful encounter, at the level it really hatched at.
+            MetLevel = pk4.MetLevel == Hatching.MetLevelRecorded(4) ? Hatching.HatchLevel(4) : pk4.MetLevel,
         };
 
         CopyNames(pk4, pk3, notes);

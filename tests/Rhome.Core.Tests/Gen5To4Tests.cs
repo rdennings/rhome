@@ -226,6 +226,38 @@ public class Gen5To4Tests
     }
 
     [Fact]
+    public void A_Pokemon_hatched_in_Gen_5_gets_Gen_4s_hatched_met_level()
+    {
+        // Gen 5 records a hatch as met at level 1, Gen 4 at level 0 (Hatching).
+        var pk5 = WhiteCaught();
+        pk5.EggLocation = Locations.Daycare5;
+        pk5.MetLevel = Hatching.MetLevelRecorded(5);
+
+        var pk4 = Converted(pk5);
+
+        Assert.Equal(Locations.Daycare4, pk4.EggLocation);
+        Assert.Equal(0, pk4.MetLevel);
+    }
+
+    [Fact]
+    public void A_Pokemon_hatched_in_Gen_4_gets_back_the_met_level_Poke_Transfer_replaced()
+    {
+        // The Platinum Togepi hatched at level 1. Poké Transfer records it as met at the level it arrived at.
+        var original = (PK4)Fixtures.Box("platinum-us", 1, 4);
+        Assert.Equal((ushort)Species.Togepi, original.Species);
+        var pk5 = original.ConvertToPK5();
+        pk5.EXP = Experience.GetEXP(12, pk5.PersonalInfo.EXPGrowth);
+        pk5.MetLevel = 12;
+
+        var back = Converted(pk5);
+
+        Assert.Equal(original.MetLevel, back.MetLevel);
+        // Poké Transfer itself turned its egg location (Cynthia's gift egg) into a faraway place. Only the bank's
+        // Gen 4 snapshot still has it, and that's what puts it back when the Togepi returns.
+        Assert.Equal(Locations.Faraway4, back.EggLocation);
+    }
+
+    [Fact]
     public void A_Gen_3_Pokemon_back_from_Gen_5_shows_as_arrived_through_Pal_Park()
     {
         var gen3 = (PK3)Fixtures.Party("emerald", 1);

@@ -260,6 +260,12 @@ public static class Gen5To4
             < 30000 and var gen4Location => gen4Location,
             _ => Locations.Faraway4,
         };
+
+        // Gen 5 records a hatched Pokémon as met at level 1 and Gen 4 at level 0 (see Hatching). One from
+        // Gen 4 had its met level replaced by Poké Transfer, so it gets Gen 4's back too. Pal Park's met
+        // level, the level it arrived at, is Gen 4's own record, so a Pokémon from Gen 3 keeps it.
+        if (pk4.EggLocation != 0 && !gen3)
+            pk4.MetLevel = Hatching.MetLevelRecorded(4);
     }
 
     static void CopyByte0x87(PK5 pk5, PK4 pk4, List<ConversionNote> notes)

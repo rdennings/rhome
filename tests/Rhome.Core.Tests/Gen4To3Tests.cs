@@ -160,6 +160,23 @@ public class Gen4To3Tests
     }
 
     [Fact]
+    public void A_hatched_level_1_Pokemon_shows_as_level_1_and_met_at_level_1_in_Gen_3()
+    {
+        // The Platinum Togepi hatched at level 1: 0 EXP and met level 0 in Gen 4. Copied as they were, Emerald
+        // showed it as level 0 (its EXP table starts level 1 at 1 EXP) and as met at level 5 (Gen 3's hatch level).
+        var pk4 = (PK4)Fixtures.Box("platinum-us", 1, 4);
+        Assert.Equal((ushort)Species.Togepi, pk4.Species);
+        Assert.Equal((0u, (byte)0, 1), (pk4.EXP, pk4.MetLevel, (int)pk4.CurrentLevel));
+
+        var pk3 = Converted(pk4);
+
+        Assert.Equal(1u, pk3.EXP);
+        Assert.Equal(1, pk3.MetLevel);
+        Assert.Equal(1, pk3.CurrentLevel);
+        Assert.True(pk3.ChecksumValid);
+    }
+
+    [Fact]
     public void A_held_item_Gen_3_has_is_kept_and_one_it_lacks_is_dropped()
     {
         var pk4 = PlatinumKirlia();
