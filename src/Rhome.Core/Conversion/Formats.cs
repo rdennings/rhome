@@ -58,28 +58,27 @@ public static class Formats
             : ConversionResult<PKM>.Refused(result.Refusal);
 
     /// <summary>
-    /// PKHeX's forward step, which does what Pal Park and Poké Transfer do, with two differences: friendship
-    /// isn't reset to 70 (it's the Pokémon's progress, and follows it), and what PKHeX leaves out (HM moves,
-    /// items the newer game can't take) is reported like the downgrades report theirs.
+    /// PKHeX's forward step, which does what Pal Park and Poké Transfer do, with two differences that keep the
+    /// Pokémon whole: friendship isn't reset to 70 (it's progress, and follows the Pokémon), and HM moves stay.
+    /// The real transfers refuse a Pokémon that knows an HM, so PKHeX strips them; but every older move exists in
+    /// the newer games, which handle them fine. An item the newer game can't take is still dropped, and reported.
     /// </summary>
     static ConversionResult<PKM> Forward(PKM pk, Func<PKM, PKM> step, DateTimeOffset now)
     {
         var converted = step(pk);
         converted.OriginalTrainerFriendship = pk.OriginalTrainerFriendship;
         converted.MetDate = DateOnly.FromDateTime(now.Date);
-
-        var notes = new List<ConversionNote>();
-        var generation = converted.Format;
         for (var i = 0; i < 4; i++)
         {
-            var move = pk.GetMove(i);
-            if (move != 0 && !converted.HasMove(move))
-                notes.Add(new(ChangeKind.Dropped, ChangedField.Moves,
-                    $"Dropped the move {EnglishNames.Move(move)} (it can't be brought into Gen {generation}; Pal Park and Poké Transfer refuse HM moves)."));
+            converted.SetMove(i, pk.GetMove(i));
+            converted.SetPPUps(i, pk.GetPPUps(i));
+            converted.SetPP(i, Math.Min(pk.GetPP(i), converted.GetMovePP(pk.GetMove(i), pk.GetPPUps(i))));
         }
+
+        var notes = new List<ConversionNote>();
         if (pk.HeldItem != 0 && converted.HeldItem == 0)
             notes.Add(new(ChangeKind.Dropped, ChangedField.HeldItem,
-                $"Dropped the held item {EnglishNames.Item(ItemConverter.GetItemForFormat(pk.HeldItem, pk.Context, EntityContext.Gen4))} (can't be held in Gen {generation})."));
+                $"Dropped the held item {EnglishNames.Item(ItemConverter.GetItemForFormat(pk.HeldItem, pk.Context, EntityContext.Gen4))} (can't be held in Gen {converted.Format})."));
 
         converted.RefreshChecksum();
         return ConversionResult<PKM>.Converted(converted, notes);
