@@ -1,5 +1,7 @@
 # rhome
 
+[![Join the rhome Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/Uq87sx6szh)
+
 **A Pokémon bank for emulator and ROM-hack players.** Keep the Pokémon from every game you play in one personal collection, then bring the ones you want into your next adventure.
 
 > **Status: planning / early development.** There's no app to download yet. The plan is in [docs/PLAN.md](docs/PLAN.md), and work is starting on milestone M0 (foundations). "rhome" is a working name; the planning docs still call it romHome.
