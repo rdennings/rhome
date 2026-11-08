@@ -6,6 +6,7 @@ Thanks for wanting to help! rhome is a small, early-stage project maintained by 
 
 - **Read the plan.** [docs/PLAN.md](docs/PLAN.md) says what's being built and in what order; [docs/SCOPE.md](docs/SCOPE.md) describes the final product.
 - **Open an issue or discussion first** for anything bigger than a small fix, so we can agree on the approach before you put in the work. Ideas outside the current milestone are welcome too; they'll be slotted into a later one.
+- **Chat on [Discord](https://discord.gg/Uq87sx6szh)** for quick questions or to talk an idea through before writing it up.
 - Issues labeled `good first issue` or `help wanted` are good places to start.
 
 ## Ways to help

@@ -55,6 +55,10 @@ dotnet run --project tools/Rhome.Cli -- save show fixtures/platinum-us.sav
 
 Bank, import and withdraw commands join it as the M1 core pieces land.
 
+## Community
+
+Come say hi, ask questions or share ideas on the [rhome Discord](https://discord.gg/Uq87sx6szh). Activity from this repo is posted there too.
+
 ## Contributing
 
 Contributions and ideas are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; the short version is to open an issue or discussion before starting on anything big.
