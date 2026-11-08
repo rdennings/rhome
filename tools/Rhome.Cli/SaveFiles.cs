@@ -4,8 +4,8 @@ using Rhome.Core;
 namespace Rhome.Cli;
 
 /// <summary>
-/// Desktop file access for the CLI: the core works on bytes, and this is where they come from.
-/// Writing in place, with a backup first, joins this class once the CLI starts changing saves (#21).
+/// Desktop file access for the CLI: the core works on bytes, and this is where they come from. Writing goes
+/// through a changeset and <c>Rhome.FileSystem.SaveOnDisk</c>, which write in place after a backup.
 /// </summary>
 static class SaveFiles
 {

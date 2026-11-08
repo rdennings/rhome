@@ -49,13 +49,20 @@ That builds the core (`src/Rhome.Core`) and runs its tests (`tests/`). The Andro
 
 ### Command line
 
-`tools/Rhome.Cli` drives the core without a UI. For now it only reads: it lists what a GBA or DS save holds and never changes the file.
+`tools/Rhome.Cli` drives the core without a UI: look at a save, and move Pokémon between saves and the bank. Every change is shown first, then applied all at once, after backing up the save and the bank; `--dry-run` only shows it.
 
 ```bash
-dotnet run --project tools/Rhome.Cli -- save show fixtures/platinum-us.sav
+alias rhome='dotnet run --project tools/Rhome.Cli --'
+rhome save show Platinum.sav                       # what a save holds; reads only
+rhome import Platinum.sav party:1                  # party slot 1 into the bank
+rhome bank list                                    # the bank, and which Pokémon are out where
+rhome withdraw 1:1 Emerald.srm                     # bank box 1 slot 1 into Emerald's first empty box slot
+rhome import Emerald.srm box:1:2                   # back again: rhome recognizes it and merges its progress
+rhome withdraw 1:1 Platinum.sav --moves last       # home, with the moves it last had in Platinum
+rhome bank move 1:1 2:5                            # rearrange the bank
 ```
 
-Bank, import and withdraw commands join it as the M1 core pieces land.
+The bank is `rhome/bank.json` in your local app data folder unless you pass `--bank`, and backups go to `backups/` next to it (`--backups`, `--keep`). Work on copies of your saves while rhome is this young.
 
 ## Community
 

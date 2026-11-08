@@ -116,7 +116,7 @@ public class ChangesetTests
 
         Assert.True(preview.Succeeded, preview.Refusal);
         Assert.False(preview.Written);
-        Assert.Equal("Import Kirlia from platinum-us (party slot 1) to bank box 1 slot 1", Assert.Single(preview.Outcomes).Description);
+        Assert.Equal("Import Kirlia from platinum-us, party slot 1, to bank box 1 slot 1", Assert.Single(preview.Outcomes).Description);
         before.AssertSameAs(world);
         Assert.Empty(world.Backups.Saves);
         Assert.Empty(world.Backups.Banks);
