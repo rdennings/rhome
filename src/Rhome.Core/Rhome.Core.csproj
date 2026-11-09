@@ -4,4 +4,8 @@
   <ItemGroup>
     <PackageReference Include="PKHeX.Core" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The known emulators list (PLAN.md §2 "Loading saves"): data, read by KnownEmulators. -->
+    <EmbeddedResource Include="Emulators/emulators.json" LogicalName="Rhome.Core.emulators.json" />
+  </ItemGroup>
 </Project>
