@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Rhome.App.Views.MainView">
+    <!-- A test screen for save access (issue #40). The real screens replace it in M2 (#42, #43, #45). -->
+    <Grid Margin="16" ColumnDefinitions="2*,16,3*" RowDefinitions="Auto,*">
+        <StackPanel Grid.ColumnSpan="3" Spacing="4" Margin="0,0,0,12">
+            <TextBlock Text="rhome · save access test" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock x:Name="InfoText" TextWrapping="Wrap" Opacity="0.75" />
+        </StackPanel>
+
+        <!-- Left: granted folders and the log -->
+        <ScrollViewer Grid.Row="1" Grid.Column="0">
+            <StackPanel Spacing="8">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" x:Name="AddFolderButton" Content="Add folder" />
+                    <TextBlock Text="Save folders" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </DockPanel>
+                <StackPanel x:Name="FolderRows" Spacing="6" />
+                <TextBlock Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,12,0,0" />
+                <SelectableTextBlock x:Name="LogText" TextWrapping="Wrap" FontSize="12" Opacity="0.85" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Right: saves found in those folders, and test writes for the selected one -->
+        <DockPanel Grid.Row="1" Grid.Column="2">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Button DockPanel.Dock="Right" x:Name="ScanButton" Content="Scan" />
+                <TextBlock x:Name="SavesHeader" Text="Saves" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
+                <TextBlock x:Name="SelectedText" TextWrapping="Wrap" Text="Tap a save to test writing it." Opacity="0.75" />
+                <WrapPanel>
+                    <Button x:Name="MoneyButton" Content="Write back with money +1" IsEnabled="False" Margin="0,0,8,8" />
+                    <Button x:Name="SameButton" Content="Write back unchanged" IsEnabled="False" Margin="0,0,8,8" />
+                </WrapPanel>
+            </StackPanel>
+            <ListBox x:Name="SavesList" />
+        </DockPanel>
+    </Grid>
+</UserControl>

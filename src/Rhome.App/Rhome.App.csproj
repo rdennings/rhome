@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Avalonia UI shared by every platform head (PLAN.md §4): Rhome.Android today, Linux next (#82).
+       Plain net10.0, so it builds and is tested on Linux with no Android workload. -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Rhome.Core/Rhome.Core.csproj" />
+    <ProjectReference Include="../Rhome.FileSystem/Rhome.FileSystem.csproj" />
+  </ItemGroup>
+</Project>

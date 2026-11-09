@@ -21,7 +21,7 @@ Thanks for wanting to help! rhome is a small, early-stage project maintained by 
 1. Fork the repo (or create a branch if you have write access).
 2. Name branches after what they do, e.g. `gen4-pokedex-flags` or `fix/emerald-checksum`.
 3. Keep pull requests focused on one thing, and link the issue they address.
-4. Make sure the build and tests pass: `dotnet test --solution Rhome.slnx`. CI runs the same on Linux for every pull request.
+4. Make sure the build and tests pass: `dotnet test --solution Rhome.Portable.slnf`. CI runs the same on Linux for every pull request, and builds the Android app in a second job.
 5. A maintainer reviews and merges. PRs are squash-merged, so the PR title becomes the commit message; keep it clear.
 
 ## Ground rules for code

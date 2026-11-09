@@ -1,0 +1,29 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Rhome.App.Views;
+
+namespace Rhome.App;
+
+public partial class App : Application
+{
+    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        switch (ApplicationLifetime)
+        {
+            case IClassicDesktopStyleApplicationLifetime desktop:
+                desktop.MainWindow = new Window { Title = "rhome", Width = 1000, Height = 700, Content = new MainView() };
+                break;
+            case IActivityApplicationLifetime activity:
+                activity.MainViewFactory = () => new MainView();
+                break;
+            case ISingleViewApplicationLifetime single:
+                single.MainView = new MainView();
+                break;
+        }
+        base.OnFrameworkInitializationCompleted();
+    }
+}
