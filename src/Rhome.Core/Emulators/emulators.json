@@ -1,0 +1,75 @@
+// The emulators rhome knows (PLAN.md §2 "Loading saves"). Adding an emulator is a new entry here, with no
+// new code: KnownEmulators.cs reads this file and checks it, and the tests load it.
+//
+// Per emulator:
+// - key: a stable ID. Remembered saves and grants refer to it, so never change one.
+// - apps: the emulator's app on each platform. Android: the package name.
+// - saveExtensions / saveFileNames: which files in its folders are saves (extensions lower case, with the dot).
+// - folders: where it keeps saves by default, per platform.
+//     area: "shared" = Android's internal shared storage (/sdcard), "sd-card" = the removable SD card
+//           (its volume ID is looked up on the device), "home" = the user's home folder (Linux).
+//     path: inside that area, separated by "/".
+//     depth: how many levels of subfolders under path can hold saves (0 = only path itself).
+//     romFolder: the folder holds the ROMs and the emulator saves next to them. Its path is only a
+//           common default: everyone keeps their ROMs somewhere else, so the user picks it.
+// - loadOrder: when one game has a save in more than one of the folders, the emulator loads the one in the
+//   folder listed first, even if that file is empty. Leave it out when it isn't known; rhome then guesses
+//   (the newest non-empty copy) and says it's a guess.
+//
+// Copies of one game are found by name: these emulators name a save after its ROM, so files with the same
+// name (ignoring the extension and case) in different folders of the same emulator are the same game.
+{
+  "emulators": [
+    {
+      "key": "melonds",
+      "name": "melonDS",
+      "apps": [
+        { "platform": "android", "id": "me.magnum.melonds" }
+      ],
+      "saveExtensions": [".sav"],
+      "folders": [
+        {
+          "key": "app",
+          "name": "melonDS's own folder",
+          "platform": "android",
+          "area": "shared",
+          "path": "Android/data/me.magnum.melonds/files/saves",
+          "depth": 0
+        },
+        {
+          // melonDS saves next to the ROM once it can write the ROM's folder, and from then on loads that
+          // file instead of the one in its own folder (Spike B, 2026-11-06). ROMS/nds is where the Thor's
+          // frontend keeps DS ROMs.
+          "key": "roms",
+          "name": "next to the ROMs",
+          "platform": "android",
+          "area": "sd-card",
+          "path": "ROMS/nds",
+          "depth": 0,
+          "romFolder": true
+        }
+      ],
+      "loadOrder": ["roms", "app"]
+    },
+    {
+      "key": "retroarch",
+      "name": "RetroArch",
+      "apps": [
+        { "platform": "android", "id": "com.retroarch" }
+      ],
+      "saveExtensions": [".srm"],
+      "folders": [
+        {
+          // With "sort saves by core" on (the default), saves sit in a subfolder per core, e.g. saves/mGBA/.
+          // Sorting by content folder as well adds a second level.
+          "key": "saves",
+          "name": "RetroArch's saves folder",
+          "platform": "android",
+          "area": "shared",
+          "path": "Android/media/com.retroarch/RetroArch/saves",
+          "depth": 2
+        }
+      ]
+    }
+  ]
+}
