@@ -1,0 +1,16 @@
+{
+  "solution": {
+    "path": "Rhome.slnx",
+    "projects": [
+      "src/Rhome.App/Rhome.App.csproj",
+      "src/Rhome.Core/Rhome.Core.csproj",
+      "src/Rhome.FileSystem/Rhome.FileSystem.csproj",
+      "tests/Rhome.App.Tests/Rhome.App.Tests.csproj",
+      "tests/Rhome.Cli.Tests/Rhome.Cli.Tests.csproj",
+      "tests/Rhome.Core.Tests/Rhome.Core.Tests.csproj",
+      "tests/Rhome.FileSystem.Tests/Rhome.FileSystem.Tests.csproj",
+      "tools/Rhome.Cli/Rhome.Cli.csproj",
+      "tools/Rhome.FixtureScrubber/Rhome.FixtureScrubber.csproj"
+    ]
+  }
+}

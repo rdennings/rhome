@@ -42,10 +42,21 @@ The [`prototypes/`](prototypes/) folder holds the Python scripts that proved sav
 You need the [.NET 10 SDK](https://dotnet.microsoft.com/download). From the repo root:
 
 ```bash
-dotnet test --solution Rhome.slnx
+dotnet test --solution Rhome.Portable.slnf
 ```
 
-That builds the core (`src/Rhome.Core`) and runs its tests (`tests/`). The Android app isn't in the solution yet; the experiments that proved it works are in [`spikes/`](spikes/).
+That builds everything except the Android app (the core in `src/Rhome.Core`, file access in `src/Rhome.FileSystem`, the shared UI in `src/Rhome.App`, and the tools) and runs the tests in `tests/`. It's what CI runs on Linux.
+
+### Android app
+
+`src/Rhome.Android` also needs the `android` workload (`dotnet workload install android`), a JDK (17 or 21) and the Android SDK:
+
+```bash
+dotnet publish src/Rhome.Android -c Release -p:AndroidSdkDirectory=$HOME/Library/Android/sdk
+adb install -r src/Rhome.Android/bin/Release/net10.0-android/publish/io.github.rdennings.rhome-Signed.apk
+```
+
+CI builds the APK for every pull request and attaches it to every push to `main` (under the run's **Artifacts**). Those builds are signed with a throwaway debug key, so they're for testing only: installing a later one means uninstalling first, and uninstalling deletes the bank, which lives in the app's storage. With everything installed, `dotnet test --solution Rhome.slnx` builds the whole solution.
 
 ### Command line
 
