@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Rhome.App.Views"
+             x:Class="Rhome.App.Views.SetupView">
+    <!-- First-run setup (issue #42, PLAN.md §2 "Loading saves"): find emulators, give access, first scan. -->
+    <UserControl.Styles>
+        <Style Selector="Border.step">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16" />
+        </Style>
+        <Style Selector="TextBlock.title">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="Opacity" Value="0.75" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="3*,16,2*" Margin="16">
+        <ScrollViewer Grid.Column="0">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Set up rhome" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Classes="hint"
+                           Text="rhome works on the saves your emulators already use, right where they are. Three steps, and you only do them once." />
+
+                <Border Classes="step">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="title" Text="1 · Find emulators" />
+                        <TextBlock x:Name="FindText" Classes="hint" Text="Checks which of the emulators rhome knows are installed." />
+                        <Button x:Name="FindButton" Content="Find emulators" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="step">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="title" Text="2 · Give access" />
+                        <TextBlock Classes="hint"
+                                   Text="For each folder, tap Give access. The folder picker opens in the right place: tap Use this folder, then Allow." />
+                        <StackPanel x:Name="FolderRows" Spacing="8" />
+                        <TextBlock Classes="hint" Margin="0,8,0,0"
+                                   Text="Using an emulator rhome doesn't know? Pick its save file by hand." />
+                        <StackPanel x:Name="FileRows" Spacing="8" />
+                        <Button x:Name="AddFileButton" Content="Pick a save file" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="step">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="title" Text="3 · First scan" />
+                        <TextBlock Classes="hint" Text="Looks through those folders and works out each game from the save itself." />
+                        <Button x:Name="ScanButton" Content="Scan" IsEnabled="False" />
+                        <StackPanel x:Name="ScanRows" Spacing="4" />
+                        <Button x:Name="DoneButton" Content="Done" IsVisible="False" Classes="accent" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <DockPanel Grid.Column="2">
+            <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <views:LogView />
+        </DockPanel>
+    </Grid>
+</UserControl>

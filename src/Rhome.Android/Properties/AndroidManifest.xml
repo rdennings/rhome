@@ -2,5 +2,11 @@
 <!-- No storage permissions: save folders come through the system folder picker, and the app's own files live in its
      own storage. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="internalOnly">
+	<!-- Android 11+ hides other apps unless they're listed here. rhome only checks whether each known emulator
+	     (Rhome.Core/Emulators/emulators.json) is installed; a test fails if one is missing from this list. -->
+	<queries>
+		<package android:name="me.magnum.melonds" />
+		<package android:name="com.retroarch" />
+	</queries>
 	<application android:label="rhome" android:icon="@drawable/Icon" />
 </manifest>
