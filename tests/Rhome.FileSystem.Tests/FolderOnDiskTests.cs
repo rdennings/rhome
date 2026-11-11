@@ -35,6 +35,22 @@ public sealed class FolderOnDiskTests : IDisposable
     }
 
     [Fact]
+    public void One_file_is_looked_up_without_listing_the_folder()
+    {
+        var path = Write("nds/white.sav", 5);
+        var time = new DateTime(2026, 11, 10, 12, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(path, time);
+        var folder = new FolderOnDisk(root);
+
+        Assert.Equal(new FileStamp(5, time), folder.Stat(path));
+        Assert.Equal(folder.List(1).Single(e => e.Name == "white.sav").Stamp, folder.Stat(path));
+
+        File.Delete(path);
+        Assert.Null(folder.Stat(path));
+        Assert.Throws<ArgumentException>(() => folder.Stat(Path.Combine(root, "..", "elsewhere.sav")));
+    }
+
+    [Fact]
     public void A_listed_file_opens_as_a_save_written_in_place()
     {
         Write("white.sav", 4);

@@ -141,7 +141,7 @@ public sealed class SetupTests : IDisposable
         await setup.GiveAccessAsync(RetroArch, RetroArch.Folder("saves")!);
         Assert.False(setup.State.Done);
 
-        var result = setup.Scan();
+        var result = new MySaves(setup, platform.Storage).Scan(DateTimeOffset.Now);
 
         Assert.Equal([GameVersion.E, GameVersion.Pt, GameVersion.W], result.Games.Select(g => g.Save.Game));
         Assert.True(new Setup(platform).State.Done);
@@ -157,7 +157,7 @@ public sealed class SetupTests : IDisposable
         Assert.Equal("save file: Download/backup.bin", await setup.AddSaveFileAsync());
         Assert.Contains("already", await setup.AddSaveFileAsync(), StringComparison.Ordinal);
 
-        var game = Assert.Single(setup.Scan().Games);
+        var game = Assert.Single(new MySaves(setup, platform.Storage).Scan(DateTimeOffset.Now).Games);
         Assert.Equal(GameVersion.E, game.Save.Game);
         Assert.Single(setup.PickedFiles);
     }
@@ -243,6 +243,8 @@ sealed class FakePlatform(string storage) : IAppPlatform
         public bool IsAvailable() => File.Exists(path);
         public IReadOnlyList<FolderEntry> List(int maxDepth) =>
             [new(path, Path.GetFileName(path), new FileInfo(path).Length, File.GetLastWriteTimeUtc(path))];
+        public FileStamp? Stat(string id) =>
+            File.Exists(path) ? new FileStamp(new FileInfo(path).Length, File.GetLastWriteTimeUtc(path)) : null;
         public ISaveLocation Open(string id) => new SaveOnDisk(path);
     }
 }

@@ -8,6 +8,7 @@ namespace Rhome.App.Views;
 /// <summary>First-run setup (issue #42): find emulators, give access, first scan. Also opened again from the saves.</summary>
 public partial class SetupView : UserControl
 {
+    readonly MySaves? saves;
     readonly Setup? setup;
     IReadOnlyList<KnownEmulator> found = [];
     bool busy;
@@ -24,9 +25,10 @@ public partial class SetupView : UserControl
         DoneButton.Click += (_, _) => Finished?.Invoke();
     }
 
-    public SetupView(Setup setup) : this()
+    public SetupView(MySaves saves) : this()
     {
-        this.setup = setup;
+        this.saves = saves;
+        setup = saves.Setup;
         if (setup.State.Sources.Count > 0)
             Find(); // run again: show where things stand
         Refresh();
@@ -110,7 +112,7 @@ public partial class SetupView : UserControl
     async Task ScanAsync()
     {
         ScanRows.Children.Clear();
-        var result = await Task.Run(setup!.Scan);
+        var result = await Task.Run(() => saves!.Scan(DateTimeOffset.Now));
 
         foreach (var folder in result.Folders)
         {

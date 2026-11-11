@@ -24,7 +24,13 @@ public interface ISaveLocation
 public sealed record FolderEntry(string Id, string RelativePath, long Size, DateTimeOffset LastModified)
 {
     public string Name => RelativePath[(RelativePath.LastIndexOf('/') + 1)..];
+
+    /// <summary>The file's size and time, to compare with a later <see cref="ISaveFolder.Stat"/>.</summary>
+    public FileStamp Stamp => new(Size, LastModified);
 }
+
+/// <summary>A file's size and when it last changed: enough to tell that it changed without reading it.</summary>
+public readonly record struct FileStamp(long Size, DateTimeOffset LastModified);
 
 /// <summary>
 /// A folder of saves rhome may use (PLAN.md §4): a plain directory on desktop, a folder the user granted through
@@ -41,6 +47,13 @@ public interface ISaveFolder
 
     /// <summary>Every file in the folder, down to <paramref name="maxDepth"/> levels of subfolders.</summary>
     IReadOnlyList<FolderEntry> List(int maxDepth);
+
+    /// <summary>
+    /// One file's size and time, by its <see cref="FolderEntry.Id"/>, without listing the folder (PLAN.md §2: the
+    /// launch check looks only at the saves it knows). Null when the file is gone. Call <see cref="IsAvailable"/>
+    /// first: a folder that can't be reached may also answer null.
+    /// </summary>
+    FileStamp? Stat(string id);
 
     /// <summary>The save with this <see cref="FolderEntry.Id"/>. Reading or writing it fails if it's gone.</summary>
     ISaveLocation Open(string id);

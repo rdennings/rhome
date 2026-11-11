@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using PKHeX.Core;
 
 namespace Rhome.Core;
@@ -21,6 +22,7 @@ public sealed record SaveSummary(GameVersion Game, byte Generation, string Train
         new(save.Game, save.Generation, save.Trainer, save.IsSupported, save.Save.PlayedHours, save.Save.PlayedMinutes);
 
     /// <summary>Play time as the games show it, e.g. "15:22".</summary>
+    [JsonIgnore]
     public string PlayTime => $"{Hours}:{Minutes:00}";
 }
 
@@ -115,7 +117,7 @@ public static class SaveScan
         return new ScanResult(reports, Group(files), problems);
     }
 
-    static bool Reachable(ISaveFolder folder)
+    internal static bool Reachable(ISaveFolder folder)
     {
         try
         {
@@ -133,22 +135,33 @@ public static class SaveScan
 
     static SaveSummary? Read(ScanFolder folder, FolderEntry entry, List<string> problems)
     {
+        var (save, problem) = TryRead(folder, entry);
+        if (problem is not null)
+            problems.Add(problem);
+        return save;
+    }
+
+    /// <summary>What the file is, or why it couldn't be read. A file that isn't a Pokémon save is no problem.</summary>
+    internal static (SaveSummary? Save, string? Problem) TryRead(ScanFolder folder, FolderEntry entry)
+    {
         // Only files the size of a save are read, so a stray big file in a ROM folder isn't loaded.
         if (entry.Size is <= 0 or > int.MaxValue || !SaveUtil.IsSizeValid((int)entry.Size))
-            return null;
+            return (null, null);
         try
         {
-            return SaveDetector.Detect(folder.Access.Open(entry.Id).Read()) is { } detected ? SaveSummary.Of(detected) : null;
+            return (SaveDetector.Detect(folder.Access.Open(entry.Id).Read()) is { } detected ? SaveSummary.Of(detected) : null, null);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            problems.Add($"couldn't read {entry.RelativePath} in {folder.Name}: {ex.Message}");
-            return null;
+            return (null, $"couldn't read {entry.RelativePath} in {folder.Name}: {ex.Message}");
         }
     }
 
-    /// <summary>Groups copies of one game with <see cref="SaveCopies"/>; a hand-picked file is a game of its own.</summary>
-    static List<FoundGame> Group(List<ScannedFile> files)
+    /// <summary>
+    /// Groups files into games with <see cref="SaveCopies"/>, and says which copy each emulator loads; a hand-picked
+    /// file is a game of its own. Games with no Pokémon save among their copies are left out.
+    /// </summary>
+    public static List<FoundGame> Group(IEnumerable<ScannedFile> files)
     {
         var byFile = new Dictionary<EmulatorSaveFile, ScannedFile>(ReferenceEqualityComparer.Instance);
         var games = new List<FoundGame>();

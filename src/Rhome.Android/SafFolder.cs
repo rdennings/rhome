@@ -85,6 +85,27 @@ sealed class SafFolder(ContentResolver resolver, Uri tree) : ISaveFolder
             Walk(id, prefix + name + "/", depthLeft - 1, result);
     }
 
+    /// <summary>One query for the document's own row: no listing, so it stays fast in a folder of 2,800 ROMs.</summary>
+    public FileStamp? Stat(string id)
+    {
+        try
+        {
+            using var c = resolver.Query(DocumentsContract.BuildDocumentUriUsingTree(tree, id)!, Columns, null, null, null);
+            if (c is null || !c.MoveToFirst())
+                return null;
+            return new FileStamp(c.IsNull(3) ? 0 : c.GetLong(3), DateTimeOffset.FromUnixTimeMilliseconds(c.IsNull(4) ? 0 : c.GetLong(4)));
+        }
+        catch (Exception ex) when (ex is Java.Lang.IllegalArgumentException or Java.IO.FileNotFoundException)
+        {
+            // A deleted document: the provider can't resolve its ID any more.
+            return null;
+        }
+        catch (Java.Lang.SecurityException ex)
+        {
+            throw new UnauthorizedAccessException($"rhome no longer has access to {id}: {ex.Message}", ex);
+        }
+    }
+
     public ISaveLocation Open(string id) => new SafSave(resolver, DocumentsContract.BuildDocumentUriUsingTree(tree, id)!);
 }
 
@@ -109,6 +130,9 @@ sealed class SafFile(ContentResolver resolver, Uri document) : ISaveFolder
         Row() is { } r
             ? [new FolderEntry(document.ToString()!, r.Name, r.Size, DateTimeOffset.FromUnixTimeMilliseconds(r.Modified))]
             : throw new IOException($"{DisplayName} can't be reached.");
+
+    public FileStamp? Stat(string id) =>
+        Row() is { } r ? new FileStamp(r.Size, DateTimeOffset.FromUnixTimeMilliseconds(r.Modified)) : null;
 
     public ISaveLocation Open(string id) => new SafSave(resolver, document);
 

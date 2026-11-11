@@ -5,7 +5,7 @@ using Rhome.Core;
 namespace Rhome.App;
 
 /// <summary>
-/// Test writes for checking save access on a device (issue #40), until the real transfer screens exist (#43, #45,
+/// Test writes for checking save access on a device (issue #40), until the real transfer screens exist (#45,
 /// #46). Each one backs the save up, writes it in place and reads it back, like a changeset does.
 /// </summary>
 public static class WriteTest
@@ -53,7 +53,7 @@ public static class WriteTest
                $"SHA-256 {Short(original)} → {Short(after)}, {after.Length} bytes";
     }
 
-    /// <summary>A stable ID for a file's backups, from its platform ID, until the bank keeps track of saves (#43).</summary>
+    /// <summary>A stable ID for a file's backups, from its platform ID, until the bank keeps track of saves.</summary>
     public static Guid BackupId(string fileId) =>
         new(SHA256.HashData(Encoding.UTF8.GetBytes(fileId)).AsSpan(0, 16));
 
