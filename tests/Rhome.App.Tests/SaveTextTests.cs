@@ -56,4 +56,31 @@ public sealed class SaveTextTests
 
         Assert.Contains("melonDS probably loads", SaveText.Detail(new FoundGame([a, b], a, LoadCertainty.Guess)), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Each_copy_says_whether_the_emulator_loads_it()
+    {
+        var roms = File("roms", []);
+        var app = File("app", Fixture("white"));
+        var game = new FoundGame([roms, app], roms, LoadCertainty.Known);
+
+        Assert.Contains("melonDS · next to the ROMs · Pokemon White.sav · empty", SaveText.Copy(game, roms), StringComparison.Ordinal);
+        Assert.EndsWith("not a save (empty?) · the emulator loads this one", SaveText.Copy(game, roms), StringComparison.Ordinal);
+        Assert.EndsWith($"{app.Save!.PlayTime} played · the emulator ignores this one", SaveText.Copy(game, app), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_single_copy_doesnt_talk_about_loading()
+    {
+        var app = File("app", Fixture("white"));
+
+        Assert.EndsWith($"{app.Save!.PlayTime} played", SaveText.Copy(new FoundGame([app], app, LoadCertainty.OnlyCopy), app), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_gone_save_points_to_scan_now()
+    {
+        Assert.Equal("Pokemon White.sav is gone from melonDS · melonDS's own folder. If it moved, tap Scan now.",
+            SaveText.Gone(File("app", Fixture("white"))));
+    }
 }

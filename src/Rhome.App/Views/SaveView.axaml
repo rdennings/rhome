@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Rhome.App.Views"
+             x:Class="Rhome.App.Views.SaveView">
+    <!-- An opened save: what's in it and every copy of it, until the split view (#45) takes over.
+         Keeps the test writes from #40 for checking save access on a device. -->
+    <Grid Margin="16" ColumnDefinitions="3*,16,2*" RowDefinitions="Auto,*">
+        <DockPanel Grid.ColumnSpan="3" Margin="0,0,0,12">
+            <Button x:Name="BackButton" DockPanel.Dock="Left" Content="‹ My saves" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBlock x:Name="TitleText" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+
+        <ScrollViewer Grid.Row="1" Grid.Column="0">
+            <StackPanel Spacing="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Copies" FontSize="17" FontWeight="SemiBold" />
+                    <StackPanel x:Name="CopyRows" Spacing="4" />
+                </StackPanel>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Party" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PartyText" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Spacing="4">
+                    <TextBlock x:Name="BoxesHeader" Text="Boxes" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock x:Name="BoxesText" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Test writes" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock x:Name="WriteText" TextWrapping="Wrap" Opacity="0.75" />
+                    <WrapPanel>
+                        <Button x:Name="MoneyButton" Content="Write back with money +1" Margin="0,0,8,8" />
+                        <Button x:Name="SameButton" Content="Write back unchanged" Margin="0,0,8,8" />
+                    </WrapPanel>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <DockPanel Grid.Row="1" Grid.Column="2">
+            <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <views:LogView />
+        </DockPanel>
+    </Grid>
+</UserControl>

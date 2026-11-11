@@ -158,10 +158,34 @@ sealed class MemoryFolder(string name) : ISaveFolder
         return this;
     }
 
-    public bool IsAvailable() => Available;
+    public Exception? StatFails { get; set; }
+    public int AvailableChecks { get; set; }
+
+    public bool IsAvailable()
+    {
+        AvailableChecks++;
+        return Available;
+    }
+
+    /// <summary>How many times the folder was listed: the launch check must never list.</summary>
+    public int Listed { get; private set; }
+
+    public MemoryFolder Remove(string path)
+    {
+        files.Remove(path);
+        return this;
+    }
+
+    public FileStamp? Stat(string id)
+    {
+        if (StatFails is { } e)
+            throw e;
+        return files.TryGetValue(id, out var f) ? new FileStamp(f.Bytes.Length, f.Modified) : null;
+    }
 
     public IReadOnlyList<FolderEntry> List(int maxDepth)
     {
+        Listed++;
         if (ListFails is { } e)
             throw e;
         return files

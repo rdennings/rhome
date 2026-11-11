@@ -135,22 +135,22 @@ public sealed class Setup
     }
 
     /// <summary>
-    /// Step 3, and Scan now: scans every folder and file set up, and marks setup as done. Slow on a big ROM folder
-    /// (Spike B: about 2 s for 2,800 files), so call it off the UI thread.
+    /// Every folder and file set up, ready to scan or check. Opening them does no I/O. A folder of an emulator that has
+    /// left the list is scanned like a picked file: every file, no grouping.
     /// </summary>
-    public ScanResult Scan()
-    {
-        var folders = State.Sources.Select(s =>
+    public IReadOnlyList<(SaveSource Source, ScanFolder Folder)> ScanFolders() =>
+        State.Sources.Select(s =>
         {
             var emulator = s.Emulator is null ? null : KnownEmulators.Find(s.Emulator);
             var folder = s.Folder is null ? null : emulator?.Folder(s.Folder);
-            // A folder of an emulator that has left the list is scanned like a picked file: every file, no grouping.
-            return new ScanFolder(folder is null ? null : emulator, folder, platform.Open(s.Id));
-        });
-        var result = SaveScan.Run(folders);
+            return (s, new ScanFolder(folder is null ? null : emulator, folder, platform.Open(s.Id)));
+        }).ToList();
+
+    /// <summary>Step 3 ran (<see cref="MySaves.Scan"/>), so from now on the app opens on the saves.</summary>
+    public void Finish()
+    {
         if (!State.Done)
             Save(State with { Done = true });
-        return result;
     }
 
     /// <summary>Where an emulator folder is by default, e.g. "Internal storage/Android/media/…".</summary>

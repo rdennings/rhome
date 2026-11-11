@@ -28,13 +28,21 @@ public sealed class FolderOnDisk(string path) : ISaveFolder
             Walk(sub, prefix + sub.Name + "/", depthLeft - 1, result);
     }
 
+    public FileStamp? Stat(string id)
+    {
+        var file = new FileInfo(Inside(id));
+        return file.Exists ? new FileStamp(file.Length, file.LastWriteTimeUtc) : null;
+    }
+
     /// <summary>The save at <paramref name="id"/>, which must be a file inside this folder.</summary>
-    public ISaveLocation Open(string id)
+    public ISaveLocation Open(string id) => new SaveOnDisk(Inside(id));
+
+    string Inside(string id)
     {
         var full = System.IO.Path.GetFullPath(id);
         var inside = System.IO.Path.GetRelativePath(Path, full);
         if (inside == "." || inside.StartsWith("..", StringComparison.Ordinal) || System.IO.Path.IsPathRooted(inside))
             throw new ArgumentException($"{id} isn't in {Path}.", nameof(id));
-        return new SaveOnDisk(full);
+        return full;
     }
 }
