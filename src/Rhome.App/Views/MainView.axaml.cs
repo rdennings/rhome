@@ -8,6 +8,7 @@ namespace Rhome.App.Views;
 public partial class MainView : UserControl
 {
     readonly MySaves? saves;
+    readonly PendingChanges? pending;
     SavesView? savesView;
     IActivatableLifetime? lifetime;
 
@@ -25,6 +26,7 @@ public partial class MainView : UserControl
         if (setup.LoadProblem is { } problem)
             AppLog.Write(problem);
         saves = new MySaves(setup, platform.Storage);
+        pending = new PendingChanges(platform.Storage);
         if (saves.LoadProblem is { } savesProblem)
             AppLog.Write(savesProblem);
 
@@ -83,11 +85,19 @@ public partial class MainView : UserControl
             savesView = new SavesView(saves!);
             savesView.SetUpAgain += ShowSetup;
             savesView.Opened += ShowSave;
+            savesView.OpenBank += ShowBank;
         }
         Screen.Content = savesView; // checks the saves again each time it's shown
     }
 
-    void ShowSave(Rhome.App.OpenedSave opened)
+    void ShowBank()
+    {
+        var view = new BankView(pending!);
+        view.Back += ShowSaves;
+        Screen.Content = view;
+    }
+
+    void ShowSave(OpenedSave opened)
     {
         var view = new SaveView(opened);
         view.Back += ShowSaves;

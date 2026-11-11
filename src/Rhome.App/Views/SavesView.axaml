@@ -6,6 +6,7 @@
     <Grid Margin="16" ColumnDefinitions="3*,16,2*" RowDefinitions="Auto,*">
         <DockPanel Grid.ColumnSpan="3" Margin="0,0,0,12">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button x:Name="BankButton" Content="Bank" Classes="accent" />
                 <Button x:Name="ScanButton" Content="Scan now" />
                 <Button x:Name="SetupButton" Content="Set up again" />
             </StackPanel>

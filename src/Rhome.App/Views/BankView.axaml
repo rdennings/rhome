@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Rhome.App.Views.BankView">
+    <!-- The bank's boxes (#44): every change is pending until Save. -->
+    <Grid Margin="16" ColumnDefinitions="1.2*,16,3*,16,1.5*" RowDefinitions="Auto,*">
+        <DockPanel Grid.ColumnSpan="5" Margin="0,0,0,12">
+            <Button x:Name="BackButton" DockPanel.Dock="Left" Content="‹ My saves" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBlock x:Name="ProblemText" DockPanel.Dock="Right" Foreground="DarkOrange" TextWrapping="Wrap" MaxWidth="600"
+                       VerticalAlignment="Center" IsVisible="False" />
+            <TextBlock Text="Bank" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </DockPanel>
+
+        <!-- Boxes, in order -->
+        <DockPanel Grid.Row="1" Grid.Column="0">
+            <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
+                <TextBox x:Name="NameBox" PlaceholderText="Box name" MaxLength="30" />
+                <WrapPanel>
+                    <Button x:Name="AddButton" Content="New box" Margin="0,0,8,8" />
+                    <Button x:Name="RenameButton" Content="Rename" Margin="0,0,8,8" />
+                </WrapPanel>
+                <WrapPanel>
+                    <Button x:Name="UpButton" Content="Move up" Margin="0,0,8,8" />
+                    <Button x:Name="DownButton" Content="Move down" Margin="0,0,8,8" />
+                    <Button x:Name="DeleteButton" Content="Delete" Margin="0,0,8,8" />
+                </WrapPanel>
+            </StackPanel>
+            <ListBox x:Name="BoxList" />
+        </DockPanel>
+
+        <!-- The open box -->
+        <DockPanel Grid.Row="1" Grid.Column="2">
+            <TextBlock x:Name="BoxTitle" DockPanel.Dock="Top" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <TextBlock x:Name="HintText" DockPanel.Dock="Top" FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <UniformGrid x:Name="SlotGrid" Columns="6" Rows="5" />
+        </DockPanel>
+
+        <!-- Pending changes -->
+        <DockPanel Grid.Row="1" Grid.Column="4">
+            <TextBlock DockPanel.Dock="Top" Text="Pending changes" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <WrapPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                <Button x:Name="SaveButton" Content="Save" Classes="accent" Margin="0,0,8,8" />
+                <Button x:Name="UndoButton" Content="Undo" Margin="0,0,8,8" />
+                <Button x:Name="DiscardButton" Content="Discard all" Margin="0,0,8,8" />
+            </WrapPanel>
+            <ScrollViewer>
+                <TextBlock x:Name="PendingText" TextWrapping="Wrap" />
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
+</UserControl>
