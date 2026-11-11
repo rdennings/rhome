@@ -168,4 +168,61 @@ public sealed class TransferTests : IDisposable
 
         Assert.Equal(known.Id, new PendingChanges(platform.Storage).Open(Opened(GameVersion.Pt)));
     }
+
+    [Fact]
+    public async Task A_withdraw_back_into_a_game_can_take_the_moves_it_had_there()
+    {
+        var pending = await Start();
+        var platinum = pending.Open(Opened(GameVersion.Pt));
+        var emerald = pending.Open(Opened(GameVersion.E));
+        var kirlia = Guid.NewGuid();
+
+        // Platinum → Emerald, where Kirlia loses Lucky Chant; then back to the bank.
+        pending.Stage(new ImportChange(platinum, new SaveSlot(null, 1), new BankSlot(1, 1), NewId: kirlia), Now);
+        pending.Stage(new WithdrawChange(kirlia, emerald, new SaveSlot(1, 2)), Now);
+        Assert.Contains("Gen 4 moves", pending.Outcomes[1].Kept, StringComparison.Ordinal);
+        Assert.True(pending.Save(Now).Written);
+        Assert.True(pending.Stage(new ImportChange(emerald, new SaveSlot(1, 2)), Now.AddHours(1)).Succeeded);
+        Assert.True(pending.Save(Now.AddHours(1)).Written);
+
+        // Into Platinum: both movesets are offered, and the newest is the default.
+        var staged = pending.Stage(new WithdrawChange(kirlia, platinum), Now.AddHours(2));
+        Assert.True(staged.Succeeded, staged.Refusal);
+        var offered = Assert.Single(pending.Outcomes);
+        Assert.NotNull(offered.Movesets?.LastInThisGame);
+        Assert.DoesNotContain((ushort)Move.LuckyChant, new[] { offered.Movesets!.Newest.Move1, offered.Movesets.Newest.Move2, offered.Movesets.Newest.Move3, offered.Movesets.Newest.Move4 });
+
+        Assert.Null(pending.ChooseMoves(0, MovesetChoice.LastInThisGame, Now.AddHours(2)));
+
+        var chosen = Assert.Single(pending.Outcomes);
+        Assert.Equal(MovesetChoice.LastInThisGame, Assert.IsType<WithdrawChange>(chosen.Change).Moves);
+        Assert.DoesNotContain(chosen.Notes, n => n.Field == ChangedField.Moves);
+        Assert.True(pending.Save(Now.AddHours(2)).Written);
+        var slot = Assert.IsType<CheckOut>(Assert.Single(platform.Storage.Bank.Load().Pokemon).CheckedOut).Slot;
+        var home = Read(PlatinumPath).GetBoxSlotAtIndex((slot.Box!.Value - 1) * 30 + slot.Slot - 1);
+        Assert.Equal(offered.Movesets!.LastInThisGame, Rhome.Core.Moveset.Of(home));
+        Assert.Contains((ushort)Move.LuckyChant, home.Moves);
+    }
+
+    [Fact]
+    public async Task A_change_a_later_one_needs_cant_be_undone_on_its_own()
+    {
+        var pending = await Start();
+        var platinum = pending.Open(Opened(GameVersion.Pt));
+        var emerald = pending.Open(Opened(GameVersion.E));
+        var kirlia = Guid.NewGuid();
+        pending.Stage(new ImportChange(platinum, new SaveSlot(null, 1), new BankSlot(1, 1), NewId: kirlia), Now);
+        pending.Stage(new ImportChange(platinum, new SaveSlot(1, 1), new BankSlot(1, 2), NewId: Guid.NewGuid()), Now);
+        pending.Stage(new WithdrawChange(kirlia, emerald, new SaveSlot(1, 2)), Now);
+
+        var refusal = pending.Undo(0, Now); // the withdraw needs Kirlia in the bank
+
+        Assert.StartsWith("Can't undo that on its own", refusal, StringComparison.Ordinal);
+        Assert.Equal(3, pending.Outcomes.Count);
+
+        Assert.Null(pending.Undo(1, Now)); // the other import can go
+        Assert.Equal([typeof(ImportChange), typeof(WithdrawChange)], pending.Outcomes.Select(o => o.Change.GetType()));
+        Assert.Null(pending.Bank.At(new BankSlot(1, 2)));
+        Assert.NotEqual(0, pending.Save(platinum).GetBoxSlotAtIndex(0).Species); // back in Platinum's box, as the changes leave it
+    }
 }
