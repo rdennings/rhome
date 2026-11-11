@@ -124,13 +124,52 @@ public sealed class PendingChanges
         return StageResult.Staged;
     }
 
-    /// <summary>Takes back the last change staged.</summary>
-    public void UndoLast(DateTimeOffset now)
+    /// <summary>
+    /// Takes back one staged change, the one at <paramref name="index"/> in <see cref="Outcomes"/>, unless a later
+    /// change needs it (a move of a Pokémon imported by it, say): then nothing changes and the refusal says why.
+    /// </summary>
+    public string? Undo(int index, DateTimeOffset now)
     {
-        if (changeset.Changes.Count == 0)
-            return;
-        changeset.Remove(changeset.Changes[^1]);
-        Refresh(now);
+        var change = changeset.Changes[index];
+        changeset.RemoveAt(index);
+        if (changeset.IsEmpty)
+        {
+            Discard();
+            return null;
+        }
+        var result = runner.Preview(changeset, now);
+        if (!result.Succeeded)
+        {
+            changeset.Insert(index, change);
+            // The refusal is about a save as a whole, or about the later change that needs this one.
+            var later = result.Failed is null ? -1 : changeset.Changes.ToList().IndexOf(result.Failed);
+            if (later < 0 || later >= Outcomes.Count)
+                return result.Refusal;
+            return $"Can't undo that on its own: change {later + 1} ({Outcomes[later].Description}) needs it. Undo that one first.";
+        }
+        Show(result);
+        return null;
+    }
+
+    /// <summary>
+    /// Picks the moveset a staged withdraw takes (<see cref="ChangeOutcome.Movesets"/>): the newest one, or the one it
+    /// had last time in this game.
+    /// </summary>
+    public string? ChooseMoves(int index, MovesetChoice moves, DateTimeOffset now)
+    {
+        if (changeset.Changes[index] is not WithdrawChange withdraw)
+            throw new ArgumentException("Only a withdraw has a moveset to choose.", nameof(index));
+        if (withdraw.Moves == moves)
+            return null;
+        changeset.Replace(index, withdraw with { Moves = moves });
+        var result = runner.Preview(changeset, now);
+        if (!result.Succeeded)
+        {
+            changeset.Replace(index, withdraw);
+            return result.Refusal;
+        }
+        Show(result);
+        return null;
     }
 
     /// <summary>Drops every pending change.</summary>
@@ -167,18 +206,6 @@ public sealed class PendingChanges
                 open[id] = save with { Save = detected.Save };
         }
         return result;
-    }
-
-    void Refresh(DateTimeOffset now)
-    {
-        if (changeset.IsEmpty)
-        {
-            Discard();
-            return;
-        }
-        var result = runner.Preview(changeset, now);
-        if (result.Succeeded)
-            Show(result);
     }
 
     void Show(ChangesetResult result)

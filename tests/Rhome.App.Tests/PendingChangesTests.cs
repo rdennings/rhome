@@ -48,19 +48,39 @@ public sealed class PendingChangesTests : IDisposable
     }
 
     [Fact]
-    public void Undo_takes_back_the_last_change_and_discard_all_of_them()
+    public void Undo_takes_back_any_one_change_and_discard_all_of_them()
     {
         var pending = new PendingChanges(storage);
         pending.Stage(new AddBoxChange(pending.Bank.Boxes.NextId, "Eleven"), Now);
         pending.Stage(new AddBoxChange(pending.Bank.Boxes.NextId, "Twelve"), Now);
+        pending.Stage(new RenameBoxChange(1, "First"), Now);
 
-        pending.UndoLast(Now);
-        Assert.Equal("Eleven", Names(pending.Bank).Last());
+        Assert.Null(pending.Undo(0, Now));
+        Assert.Equal(["First", "Twelve"], new[] { Names(pending.Bank).First(), Names(pending.Bank).Last() });
+        Assert.Equal(2, pending.Outcomes.Count);
+
+        Assert.Null(pending.Undo(1, Now));
+        Assert.Equal("Twelve", Names(pending.Bank).Last());
         Assert.Single(pending.Outcomes);
 
         pending.Discard();
         Assert.True(pending.IsEmpty);
         Assert.Equal(10, pending.Bank.Boxes.Boxes.Count);
+    }
+
+    [Fact]
+    public void A_change_a_later_one_needs_stays()
+    {
+        var pending = new PendingChanges(storage);
+        var id = pending.Bank.Boxes.NextId;
+        pending.Stage(new AddBoxChange(id, "Eleven"), Now);
+        pending.Stage(new RenameBoxChange(id, "Favourites"), Now);
+
+        var refusal = pending.Undo(0, Now);
+
+        Assert.Equal("Can't undo that on its own: change 2 (Rename box Eleven to Favourites) needs it. Undo that one first.", refusal);
+        Assert.Equal("Favourites", Names(pending.Bank).Last());
+        Assert.Equal(2, pending.Outcomes.Count);
     }
 
     [Fact]
