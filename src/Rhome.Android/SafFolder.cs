@@ -89,6 +89,46 @@ sealed class SafFolder(ContentResolver resolver, Uri tree) : ISaveFolder
 }
 
 /// <summary>
+/// One save file the user picked by hand (PLAN.md §2 "Fallback"), as a folder holding just that file, so it's scanned
+/// and written like any other.
+/// </summary>
+sealed class SafFile(ContentResolver resolver, Uri document) : ISaveFolder
+{
+    static readonly string[] Columns =
+    [
+        DocumentsContract.Document.ColumnDisplayName,
+        DocumentsContract.Document.ColumnSize,
+        DocumentsContract.Document.ColumnLastModified,
+    ];
+
+    public string DisplayName => Row()?.Name ?? document.LastPathSegment ?? document.ToString()!;
+
+    public bool IsAvailable() => Row() is not null;
+
+    public IReadOnlyList<FolderEntry> List(int maxDepth) =>
+        Row() is { } r
+            ? [new FolderEntry(document.ToString()!, r.Name, r.Size, DateTimeOffset.FromUnixTimeMilliseconds(r.Modified))]
+            : throw new IOException($"{DisplayName} can't be reached.");
+
+    public ISaveLocation Open(string id) => new SafSave(resolver, document);
+
+    (string Name, long Size, long Modified)? Row()
+    {
+        try
+        {
+            using var c = resolver.Query(document, Columns, null, null, null);
+            if (c is null || !c.MoveToFirst())
+                return null;
+            return (c.GetString(0) ?? "", c.IsNull(1) ? 0 : c.GetLong(1), c.IsNull(2) ? 0 : c.GetLong(2));
+        }
+        catch (Exception ex) when (ex is Java.Lang.SecurityException or Java.Lang.IllegalArgumentException or Java.IO.FileNotFoundException)
+        {
+            return null;
+        }
+    }
+}
+
+/// <summary>
 /// One save in a granted folder. Writes open the existing file with mode "rw", which neither truncates nor recreates
 /// it ("w" and "rwt" may truncate first), and overwrite it from the start, so the emulator keeps owning the same file
 /// (PLAN.md §1 lesson 2). Spike B checked on the Thor that the inode, owner and mode stay the same.

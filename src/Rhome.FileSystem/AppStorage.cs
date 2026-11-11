@@ -9,6 +9,7 @@ namespace Rhome.FileSystem;
 /// <remarks>
 /// <code>
 /// &lt;root&gt;/bank.json               the bank
+/// &lt;root&gt;/setup.json              the save folders set up in first-run setup, and whether it's done
 /// &lt;root&gt;/backups/saves/&lt;id&gt;/     each save as it was before rhome wrote it
 /// &lt;root&gt;/backups/bank/            the bank as it was before each change
 /// </code>
@@ -20,6 +21,8 @@ public sealed class AppStorage(string root, int keepBackups = 10)
     public FileOnDisk BankFile => new(Path.Combine(Root, "bank.json"));
 
     public JsonBankStore Bank => new(BankFile);
+
+    public FileOnDisk SetupFile => new(Path.Combine(Root, "setup.json"));
 
     public BackupFolder Backups => new(Path.Combine(Root, "backups"), keepBackups);
 }
