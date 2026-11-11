@@ -17,6 +17,9 @@ public partial class SavesView : UserControl
     /// <summary>Raised when the user taps Set up again.</summary>
     public event Action? SetUpAgain;
 
+    /// <summary>Raised when the user taps Bank.</summary>
+    public event Action? OpenBank;
+
     /// <summary>Raised when a save was opened.</summary>
     public event Action<OpenedSave>? Opened;
 
@@ -25,6 +28,7 @@ public partial class SavesView : UserControl
         InitializeComponent();
         ScanButton.Click += (_, _) => _ = Run(ScanAsync);
         SetupButton.Click += (_, _) => SetUpAgain?.Invoke();
+        BankButton.Click += (_, _) => OpenBank?.Invoke();
         SavesList.SelectionChanged += (_, _) =>
         {
             if ((SavesList.SelectedItem as Control)?.Tag is FoundGame game)

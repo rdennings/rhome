@@ -14,6 +14,21 @@ public sealed record WithdrawChange(Guid PokemonId, Guid SaveId, SaveSlot? To = 
 /// <summary>Move a Pokémon (or a checked-out placeholder) to another bank slot, swapping with whatever is there.</summary>
 public sealed record MoveInBankChange(Guid PokemonId, BankSlot To) : Change;
 
+/// <summary>Add an empty bank box at the end.</summary>
+/// <param name="Id">The new box's ID (<see cref="BoxGroup.NextId"/> of the bank as the staged changes leave it). It's
+/// part of the change so later changes can put Pokémon in the box, and undoing another change never renumbers it.</param>
+public sealed record AddBoxChange(int Id, string Name) : Change;
+
+/// <summary>Rename a bank box.</summary>
+public sealed record RenameBoxChange(int BoxId, string Name) : Change;
+
+/// <summary>Move a bank box to another place in the order. The Pokémon in it go along: they follow the box's ID.</summary>
+/// <param name="Position">Where it goes, from 1 (first).</param>
+public sealed record MoveBoxChange(int BoxId, int Position) : Change;
+
+/// <summary>Delete a bank box. Only an empty one: no Pokémon, and no placeholder of one checked out into a game.</summary>
+public sealed record DeleteBoxChange(int BoxId) : Change;
+
 /// <summary>
 /// Pending changes (PLAN.md §1 lesson 2, §2 "Safety"): operations staged by the user and applied all at once
 /// on Save. Nothing touches the bank or a save until then. It also remembers the bytes of each save as the user
@@ -66,14 +81,21 @@ public sealed record ChangeOutcome(Change Change, string Description, IReadOnlyL
 public sealed class ChangesetResult
 {
     internal ChangesetResult(IReadOnlyList<ChangeOutcome> outcomes, string? refusal, Change? failed,
-        IReadOnlyList<BankPokemon> candidates, bool written)
+        IReadOnlyList<BankPokemon> candidates, bool written, Bank? bank = null)
     {
         Outcomes = outcomes;
         Refusal = refusal;
         Failed = failed;
         Candidates = candidates;
         Written = written;
+        Bank = bank;
     }
+
+    /// <summary>
+    /// The bank as the changes leave it: what the screens show while changes are pending, and the bank written on
+    /// apply. Null for a refusal.
+    /// </summary>
+    public Bank? Bank { get; }
 
     /// <summary>What each change does (or did), in order. For a refusal, the changes before the one that failed.</summary>
     public IReadOnlyList<ChangeOutcome> Outcomes { get; }
@@ -151,7 +173,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
         }
 
         if (!commit)
-            return new ChangesetResult(outcomes, null, null, [], written: false);
+            return new ChangesetResult(outcomes, null, null, [], written: false, bank);
 
         // Build every file before touching any, and check each one reads back.
         var newSaves = new List<(OpenSave Save, byte[] Bytes)>();
@@ -200,7 +222,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
             throw new ChangesetWriteException(message, e);
         }
 
-        return new ChangesetResult(outcomes, null, null, [], written: true);
+        return new ChangesetResult(outcomes, null, null, [], written: true, bank);
     }
 
     (OpenSave? Save, string Problem) Open(Bank bank, Changeset changeset, Guid id)
@@ -249,7 +271,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
                 if (!result.Succeeded)
                     return (null, result.Refusal, result.Candidates);
                 var what = $"{(result.Returned ? "Return" : "Import")} {Species(result.Pokemon)} from {Name(bank, i.SaveId)}, {i.From}, " +
-                           $"to {result.Pokemon.Slot}";
+                           $"to {bank.Boxes.Describe(result.Pokemon.Slot)}";
                 return (new ChangeOutcome(change, what, result.Notes, result.Bookkeeping), null, []);
             }
             case WithdrawChange w:
@@ -268,16 +290,64 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
                 if (record is null)
                     return (null, $"The bank has no Pokémon {m.PokemonId}.", []);
                 if (bank.Boxes.Box(m.To.Box) is null || m.To.Slot is < 1 or > BankBox.SlotCount)
-                    return (null, $"{m.To} doesn't exist.", []);
+                    return (null, $"{bank.Boxes.Describe(m.To)} doesn't exist.", []);
                 var from = record.Slot;
                 var other = bank.At(m.To);
                 record.Slot = m.To;
                 if (other is not null && other != record)
                     other.Slot = from;
                 var what = other is null || other == record
-                    ? $"Move {Species(record)} to {m.To}"
-                    : $"Swap {Species(record)} ({from}) with {Species(other)} ({m.To})";
+                    ? $"Move {Species(record)} to {bank.Boxes.Describe(m.To)}"
+                    : $"Swap {Species(record)} ({bank.Boxes.Describe(from)}) with {Species(other)} ({bank.Boxes.Describe(m.To)})";
                 return (new ChangeOutcome(change, what, [], []), null, []);
+            }
+            case AddBoxChange a:
+            {
+                var (name, problem) = BoxGroup.CleanName(a.Name);
+                if (problem is not null)
+                    return (null, problem, []);
+                if (a.Id < 1 || bank.Boxes.Box(a.Id) is not null)
+                    return (null, $"There's already a box with ID {a.Id}.", []);
+                bank.Boxes.Boxes.Add(new BankBox { Id = a.Id, Name = name! });
+                return (Done(change, $"Add box {name}"), null, []);
+            }
+            case RenameBoxChange r:
+            {
+                if (bank.Boxes.Box(r.BoxId) is not { } box)
+                    return (null, NoBox(r.BoxId), []);
+                var (name, problem) = BoxGroup.CleanName(r.Name);
+                if (problem is not null)
+                    return (null, problem, []);
+                var old = box.Name;
+                box.Name = name!;
+                return (Done(change, $"Rename box {old} to {name}"), null, []);
+            }
+            case MoveBoxChange mb:
+            {
+                if (bank.Boxes.Box(mb.BoxId) is not { } box)
+                    return (null, NoBox(mb.BoxId), []);
+                var boxes = bank.Boxes.Boxes;
+                if (mb.Position < 1 || mb.Position > boxes.Count)
+                    return (null, $"There's no place {mb.Position}: the bank has {boxes.Count} boxes.", []);
+                boxes.Remove(box);
+                boxes.Insert(mb.Position - 1, box);
+                return (Done(change, $"Move box {box.Name} to place {mb.Position}"), null, []);
+            }
+            case DeleteBoxChange d:
+            {
+                if (bank.Boxes.Box(d.BoxId) is not { } box)
+                    return (null, NoBox(d.BoxId), []);
+                if (bank.Boxes.Boxes.Count == 1)
+                    return (null, "The bank needs at least one box.", []);
+                var inside = bank.Pokemon.Where(p => p.Slot.Box == box.Id).ToList();
+                if (inside.Count > 0)
+                {
+                    var away = inside.Count(p => !p.IsInBank);
+                    return (null, $"{box.Name} isn't empty: move its {Plural(inside.Count, "Pokémon")} out first" +
+                                  (away > 0 ? $" ({away} of them out in a game, holding their place)." : "."), []);
+                }
+                bank.Boxes.Boxes.Remove(box);
+                return (Done(change, $"Delete box {box.Name}"), null, []);
             }
             default:
                 throw new NotSupportedException($"Unknown change {change.GetType().Name}.");
@@ -285,6 +355,12 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
     }
 
     static string Species(BankPokemon pokemon) => EnglishNames.Species(pokemon.Summary.Species);
+
+    static ChangeOutcome Done(Change change, string description) => new(change, description, [], []);
+
+    static string NoBox(int id) => $"The bank has no box with ID {id}.";
+
+    static string Plural(int n, string what) => n == 1 ? $"1 {what}" : $"{n} {what}";
 
     static string Name(Bank bank, Guid id) => bank.Saves.Find(s => s.Id == id)?.DisplayName ?? $"save {id}";
 

@@ -54,7 +54,7 @@ public sealed class TransferCommandTests : IDisposable
         Assert.Equal((ushort)Species.Kirlia, At(emerald, 1, 2).Species);
 
         var back = Ok("import", emerald, "box:1:2");
-        Assert.Contains("Return Kirlia from Emerald (Emerald.srm), box 1 slot 2, to bank box 1 slot 1", back.Output);
+        Assert.Contains("Return Kirlia from Emerald (Emerald.srm), box 1 slot 2, to Box 1 slot 1", back.Output);
         Ok("withdraw", "1:1", platinum, "box:1:5", "--moves", "last");
 
         var home = At(platinum, 1, 5);
@@ -92,7 +92,7 @@ public sealed class TransferCommandTests : IDisposable
         var (code, output, _) = Run("import", platinum, "box:1:3", "--dry-run");
 
         Assert.Equal(Cli.Ok, code);
-        Assert.Contains("Import Gastly from Platinum (Platinum.sav), box 1 slot 3, to bank box 1 slot 1", output);
+        Assert.Contains("Import Gastly from Platinum (Platinum.sav), box 1 slot 3, to Box 1 slot 1", output);
         Assert.Contains("Dry run: nothing was written.", output);
         Assert.Equal(before, File.ReadAllBytes(platinum));
         Assert.False(File.Exists(Bank));

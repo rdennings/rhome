@@ -22,7 +22,7 @@ public class ChangesetTests
 
         Assert.True(preview.Succeeded, preview.Refusal);
         Assert.False(preview.Written);
-        Assert.Equal("Import Kirlia from platinum-us, party slot 1, to bank box 1 slot 1", Assert.Single(preview.Outcomes).Description);
+        Assert.Equal("Import Kirlia from platinum-us, party slot 1, to Box 1 slot 1", Assert.Single(preview.Outcomes).Description);
         before.AssertSameAs(world);
         Assert.Empty(world.Backups.Saves);
         Assert.Empty(world.Backups.Banks);
@@ -222,7 +222,7 @@ public class ChangesetTests
         var result = world.Runner.Apply(move, Monday.AddHours(1));
 
         Assert.True(result.Written, result.Refusal);
-        Assert.Equal(["Swap Buneary (bank box 1 slot 1) with Bidoof (bank box 1 slot 2)", "Move Bidoof to bank box 3 slot 7"],
+        Assert.Equal(["Swap Buneary (Box 1 slot 1) with Bidoof (Box 1 slot 2)", "Move Bidoof to Box 3 slot 7"],
             result.Outcomes.Select(o => o.Description));
         var bank = world.Bank;
         Assert.Equal(new BankSlot(1, 2), bank.Pokemon.Single(p => p.Id == buneary.Id).Slot);
