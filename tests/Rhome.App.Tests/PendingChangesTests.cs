@@ -22,8 +22,8 @@ public sealed class PendingChangesTests : IDisposable
     {
         var pending = new PendingChanges(storage);
 
-        Assert.Null(pending.Stage(new RenameBoxChange(1, "Starters"), Now));
-        Assert.Null(pending.Stage(new MoveBoxChange(1, 3), Now));
+        Assert.True(pending.Stage(new RenameBoxChange(1, "Starters"), Now).Succeeded);
+        Assert.True(pending.Stage(new MoveBoxChange(1, 3), Now).Succeeded);
 
         Assert.Equal(["Box 2", "Box 3", "Starters"], Names(pending.Bank).Take(3));
         Assert.Equal(["Rename box Box 1 to Starters", "Move box Starters to place 3"], pending.Outcomes.Select(o => o.Description));
@@ -41,7 +41,7 @@ public sealed class PendingChangesTests : IDisposable
     {
         var pending = new PendingChanges(storage);
 
-        Assert.Equal("A box needs a name.", pending.Stage(new RenameBoxChange(1, " "), Now));
+        Assert.Equal("A box needs a name.", pending.Stage(new RenameBoxChange(1, " "), Now).Refusal);
 
         Assert.True(pending.IsEmpty);
         Assert.Equal("Box 1", pending.Bank.Boxes.Boxes[0].Name);
@@ -88,7 +88,7 @@ public sealed class PendingChangesTests : IDisposable
         var pending = new PendingChanges(storage);
 
         Assert.NotNull(pending.LoadProblem);
-        Assert.Equal(pending.LoadProblem, pending.Stage(new RenameBoxChange(1, "x"), Now));
+        Assert.Equal(pending.LoadProblem, pending.Stage(new RenameBoxChange(1, "x"), Now).Refusal);
         Assert.Equal("{ not a bank", File.ReadAllText(storage.BankFile.Path));
     }
 }

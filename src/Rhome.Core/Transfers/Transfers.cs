@@ -110,8 +110,9 @@ public static class Transfers
     /// happens and the result lists the candidates; <paramref name="how"/> carries the user's answer.
     /// </remarks>
     /// <param name="saveId">The bank's ID for this save (<see cref="BankSave.Id"/>); it must be in <see cref="Bank.Saves"/>.</param>
+    /// <param name="newId">The ID a new record gets; a new one when null.</param>
     public static TransferResult Import(Bank bank, SaveFile save, Guid saveId, SaveSlot from, DateTimeOffset now,
-        BankSlot? into = null, ImportAs how = default)
+        BankSlot? into = null, ImportAs how = default, Guid? newId = null)
     {
         if (bank.Saves.All(s => s.Id != saveId))
             throw new ArgumentException($"The bank doesn't know save {saveId}.", nameof(saveId));
@@ -160,11 +161,13 @@ public static class Transfers
         if (slot is not { } target)
             return TransferResult.Refused("Every bank box is full.");
         if (bank.Boxes.Box(target.Box) is null || target.Slot is < 1 or > BankBox.SlotCount)
-            return TransferResult.Refused($"{target} doesn't exist.");
+            return TransferResult.Refused($"{bank.Boxes.Describe(target)} doesn't exist.");
         if (bank.At(target) is not null)
-            return TransferResult.Refused($"{target} is taken.");
+            return TransferResult.Refused($"{bank.Boxes.Describe(target)} is taken.");
 
-        var record = BankPokemon.From(pk, target, saveId, now);
+        if (newId is { } id && bank.Pokemon.Any(p => p.Id == id))
+            throw new ArgumentException($"The bank already has a Pokémon {id}.", nameof(newId));
+        var record = BankPokemon.From(pk, target, saveId, now, newId);
         bank.Pokemon.Add(record);
         Empty(save, from, index);
         return TransferResult.Done(record, from, null, [], []);

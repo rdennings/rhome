@@ -51,9 +51,10 @@ public sealed class BankPokemon
     /// A new bank record for a Pokémon read from a save: fingerprint, summary and one snapshot. Placing it
     /// and recording where it came from is the import step's job (issue #18).
     /// </summary>
-    public static BankPokemon From(PKM pk, BankSlot slot, Guid fromSave, DateTimeOffset capturedAt) => new()
+    /// <param name="id">The new record's ID; a new one when null.</param>
+    public static BankPokemon From(PKM pk, BankSlot slot, Guid fromSave, DateTimeOffset capturedAt, Guid? id = null) => new()
     {
-        Id = Guid.NewGuid(),
+        Id = id ?? Guid.NewGuid(),
         Slot = slot,
         Fingerprint = PokemonFingerprint.Of(pk),
         Summary = PokemonSummary.Of(pk),

@@ -65,7 +65,7 @@ public partial class MainView : UserControl
             case SavesView view:
                 _ = view.RefreshAsync();
                 break;
-            case SaveView open when open.Game is { } game:
+            case TransferView open when open.Game is { } game:
                 _ = savesView.OpenAsync(game);
                 break;
         }
@@ -97,9 +97,22 @@ public partial class MainView : UserControl
         Screen.Content = view;
     }
 
+    /// <summary>Opens the split view for a save, unless it can't take part in transfers; My saves then says why.</summary>
     void ShowSave(OpenedSave opened)
     {
-        var view = new SaveView(opened);
+        Guid saveId;
+        try
+        {
+            saveId = pending!.Open(opened);
+        }
+        catch (InvalidOperationException ex)
+        {
+            AppLog.Write($"can't move Pokémon in {SaveText.Title(opened.Game)}: {ex.Message}");
+            ShowSaves();
+            savesView!.ShowNotice(ex.Message);
+            return;
+        }
+        var view = new TransferView(pending, saveId, opened);
         view.Back += ShowSaves;
         Screen.Content = view;
     }

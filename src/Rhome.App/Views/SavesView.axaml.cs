@@ -13,6 +13,7 @@ public partial class SavesView : UserControl
 {
     readonly MySaves? saves;
     bool busy;
+    string? notice;
 
     /// <summary>Raised when the user taps Set up again.</summary>
     public event Action? SetUpAgain;
@@ -131,9 +132,19 @@ public partial class SavesView : UserControl
             }.OfType<string>());
         if (notices is not null)
         {
+            if (notice is not null && !notices.Contains(notice))
+                notices = [notice, .. notices];
+            notice = null;
             Notices.Text = string.Join("\n", notices);
             Notices.IsVisible = notices.Count > 0;
         }
+    }
+
+    /// <summary>Shows a line above the list, e.g. why a save couldn't be opened.</summary>
+    public void ShowNotice(string text)
+    {
+        ShowGames(null, [text]);
+        notice = text; // kept for the check that runs when the list is shown again
     }
 
     static string Plural(int n, string what) => n == 1 ? $"1 {what}" : $"{n} {what}s";

@@ -6,7 +6,10 @@ namespace Rhome.Core;
 public abstract record Change;
 
 /// <summary>Take the Pokémon in a save slot into the bank (<see cref="Transfers.Import"/>).</summary>
-public sealed record ImportChange(Guid SaveId, SaveSlot From, BankSlot? Into = null, ImportAs How = default) : Change;
+/// <param name="NewId">The ID the Pokémon gets if it becomes a new bank record. Give one when later changes in the same
+/// changeset may move or withdraw it: every preview runs the import again, and would otherwise make a new ID each
+/// time.</param>
+public sealed record ImportChange(Guid SaveId, SaveSlot From, BankSlot? Into = null, ImportAs How = default, Guid? NewId = null) : Change;
 
 /// <summary>Send a bank Pokémon into a save (<see cref="Transfers.Withdraw"/>).</summary>
 public sealed record WithdrawChange(Guid PokemonId, Guid SaveId, SaveSlot? To = null, MovesetChoice Moves = MovesetChoice.Newest) : Change;
@@ -81,8 +84,10 @@ public sealed record ChangeOutcome(Change Change, string Description, IReadOnlyL
 public sealed class ChangesetResult
 {
     internal ChangesetResult(IReadOnlyList<ChangeOutcome> outcomes, string? refusal, Change? failed,
-        IReadOnlyList<BankPokemon> candidates, bool written, Bank? bank = null)
+        IReadOnlyList<BankPokemon> candidates, bool written, Bank? bank = null,
+        IReadOnlyDictionary<Guid, SaveFile>? saves = null)
     {
+        Saves = saves ?? new Dictionary<Guid, SaveFile>();
         Outcomes = outcomes;
         Refusal = refusal;
         Failed = failed;
@@ -96,6 +101,12 @@ public sealed class ChangesetResult
     /// apply. Null for a refusal.
     /// </summary>
     public Bank? Bank { get; }
+
+    /// <summary>
+    /// Each save the changes touch, as they leave it, by <see cref="BankSave.Id"/>: what the split view shows while
+    /// changes are pending. Empty for a refusal.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, SaveFile> Saves { get; }
 
     /// <summary>What each change does (or did), in order. For a refusal, the changes before the one that failed.</summary>
     public IReadOnlyList<ChangeOutcome> Outcomes { get; }
@@ -173,7 +184,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
         }
 
         if (!commit)
-            return new ChangesetResult(outcomes, null, null, [], written: false, bank);
+            return new ChangesetResult(outcomes, null, null, [], written: false, bank, SavesOf(open));
 
         // Build every file before touching any, and check each one reads back.
         var newSaves = new List<(OpenSave Save, byte[] Bytes)>();
@@ -222,7 +233,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
             throw new ChangesetWriteException(message, e);
         }
 
-        return new ChangesetResult(outcomes, null, null, [], written: true, bank);
+        return new ChangesetResult(outcomes, null, null, [], written: true, bank, SavesOf(open));
     }
 
     (OpenSave? Save, string Problem) Open(Bank bank, Changeset changeset, Guid id)
@@ -267,7 +278,7 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
         {
             case ImportChange i:
             {
-                var result = Transfers.Import(bank, open[i.SaveId].Save, i.SaveId, i.From, now, i.Into, i.How);
+                var result = Transfers.Import(bank, open[i.SaveId].Save, i.SaveId, i.From, now, i.Into, i.How, i.NewId);
                 if (!result.Succeeded)
                     return (null, result.Refusal, result.Candidates);
                 var what = $"{(result.Returned ? "Return" : "Import")} {Species(result.Pokemon)} from {Name(bank, i.SaveId)}, {i.From}, " +
@@ -355,6 +366,8 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
     }
 
     static string Species(BankPokemon pokemon) => EnglishNames.Species(pokemon.Summary.Species);
+
+    static Dictionary<Guid, SaveFile> SavesOf(Dictionary<Guid, OpenSave> open) => open.ToDictionary(o => o.Key, o => o.Value.Save);
 
     static ChangeOutcome Done(Change change, string description) => new(change, description, [], []);
 
