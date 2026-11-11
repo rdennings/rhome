@@ -249,4 +249,25 @@ public class ChangesetTests
         Assert.False(result.Succeeded);
         Assert.Equal(bank.Pokemon[0].Id, Assert.Single(result.Candidates).Id);
     }
+
+    [Fact]
+    public void A_pokemon_imported_in_pending_changes_can_be_moved_and_withdrawn_before_save()
+    {
+        // Every preview runs the import again, so the new record must keep the ID the change gives it.
+        var world = new World("platinum-us", "emerald");
+        var id = Guid.NewGuid();
+        var changeset = world.Changeset("platinum-us", "emerald");
+        changeset.Add(new ImportChange(world.Id("platinum-us"), new SaveSlot(null, 1), NewId: id));
+        Assert.True(world.Runner.Preview(changeset, Monday).Succeeded);
+        changeset.Add(new MoveInBankChange(id, new BankSlot(2, 5)));
+        changeset.Add(new WithdrawChange(id, world.Id("emerald")));
+
+        var result = world.Runner.Apply(changeset, Monday);
+
+        Assert.True(result.Written, result.Refusal);
+        var kirlia = Assert.Single(world.Bank.Pokemon);
+        Assert.Equal(id, kirlia.Id);
+        Assert.Equal(new BankSlot(2, 5), kirlia.Slot);
+        Assert.False(kirlia.IsInBank);
+    }
 }

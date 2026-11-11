@@ -75,7 +75,7 @@ public partial class BankView : UserControl
     /// <summary>Stages a change; says why when it can't be done.</summary>
     bool Stage(Change change)
     {
-        var refusal = pending!.Stage(change, DateTimeOffset.Now);
+        var refusal = pending!.Stage(change, DateTimeOffset.Now).Refusal;
         Problem(refusal);
         if (refusal is not null)
             AppLog.Write($"bank: {refusal}");
