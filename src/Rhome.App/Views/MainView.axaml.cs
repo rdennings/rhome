@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Interactivity;
 
 namespace Rhome.App.Views;
 
@@ -11,6 +12,7 @@ public partial class MainView : UserControl
     readonly PendingChanges? pending;
     SavesView? savesView;
     IActivatableLifetime? lifetime;
+    TopLevel? topLevel;
 
     public MainView()
     {
@@ -42,6 +44,9 @@ public partial class MainView : UserControl
         lifetime = Application.Current?.TryGetFeature(typeof(IActivatableLifetime)) as IActivatableLifetime;
         if (lifetime is not null)
             lifetime.Activated += OnActivated;
+        topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is not null)
+            topLevel.BackRequested += OnBackRequested;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -49,6 +54,9 @@ public partial class MainView : UserControl
         if (lifetime is not null)
             lifetime.Activated -= OnActivated;
         lifetime = null;
+        if (topLevel is not null)
+            topLevel.BackRequested -= OnBackRequested;
+        topLevel = null;
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -68,6 +76,19 @@ public partial class MainView : UserControl
             case TransferView open when open.Game is { } game:
                 _ = savesView.OpenAsync(game);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// The system back button (Android) does what the screen's own back button does, so leaving a save with unsaved
+    /// changes asks first. On My saves it isn't handled, and the system leaves the app as usual.
+    /// </summary>
+    void OnBackRequested(object? sender, RoutedEventArgs e)
+    {
+        if (Screen.Content is IGoesBack screen)
+        {
+            e.Handled = true;
+            screen.GoBack();
         }
     }
 
@@ -116,4 +137,11 @@ public partial class MainView : UserControl
         view.Back += ShowSaves;
         Screen.Content = view;
     }
+}
+
+/// <summary>A screen with a way back, which the system back button uses too.</summary>
+interface IGoesBack
+{
+    /// <summary>Does what the screen's back button does; it may ask first.</summary>
+    void GoBack();
 }

@@ -14,11 +14,13 @@ namespace Rhome.App.Views;
 /// The split view (issue #45): the opened game's party and boxes on the left, the bank on the right. Tap a Pokémon,
 /// then where it goes, or drag it there. Each move is staged in <see cref="PendingChanges"/>, so the core's checks
 /// (generation lock, structural check, a full party) refuse a move straight away and say why. Nothing is written until
-/// Save. A Pokémon is only ever on one side: an import empties the game's slot, a withdraw leaves a placeholder.
+/// Save, in the pending-changes sheet (issue #46). A Pokémon is only ever on one side: an import empties the game's
+/// slot, a withdraw leaves a placeholder.
 /// </summary>
-public partial class TransferView : UserControl
+public partial class TransferView : UserControl, IGoesBack
 {
     readonly PendingChanges? pending;
+    readonly PendingSheet? sheet;
     readonly Guid saveId;
     int saveBox = 1;
     int bankBox = 1;
@@ -34,20 +36,20 @@ public partial class TransferView : UserControl
 
     sealed record InBank(BankSlot Slot) : Place;
 
-    /// <summary>Raised when the user taps back to My saves. Pending changes stay pending.</summary>
+    /// <summary>Raised when the user goes back to My saves, once nothing is pending (saved, discarded, or none).</summary>
     public event Action? Back;
 
     public TransferView()
     {
         InitializeComponent();
-        BackButton.Click += (_, _) => Back?.Invoke();
+        BackButton.Click += (_, _) => GoBack();
         SavePrev.Click += (_, _) => { saveBox--; Redraw(); };
         SaveNext.Click += (_, _) => { saveBox++; Redraw(); };
         BankPrev.Click += (_, _) => { bankBox--; Redraw(); };
         BankNext.Click += (_, _) => { bankBox++; Redraw(); };
-        UndoButton.Click += (_, _) => { pending!.UndoLast(DateTimeOffset.Now); Settle(); };
+        UndoButton.Click += (_, _) => { Problem(pending!.Undo(pending.Outcomes.Count - 1, DateTimeOffset.Now)); picked = null; asking = null; Redraw(); };
         DiscardButton.Click += (_, _) => { pending!.Discard(); AppLog.Write("discarded the pending changes"); Settle(); };
-        SaveButton.Click += (_, _) => SaveChanges();
+        SaveButton.Click += (_, _) => sheet?.Show(leaving: false);
 
         // Drag: press on a Pokémon, let go over another slot. A press and release on one slot is a tap (Click).
         AddHandler(PointerPressedEvent, (_, e) => dragFrom = PlaceOf(e.Source as Visual) is { } p && HasPokemon(p) ? p : null,
@@ -59,6 +61,10 @@ public partial class TransferView : UserControl
     {
         this.pending = pending;
         this.saveId = saveId;
+        sheet = new PendingSheet(pending);
+        sheet.Changed += Settle;
+        sheet.Left += () => Back?.Invoke();
+        Root.Children.Add(sheet);
         Game = opened.Game;
         TitleText.Text = $"{SaveText.Title(opened.Game)} ↔ Bank";
         CopiesText.Text = opened.Game.HasSeveralCopies
@@ -71,6 +77,20 @@ public partial class TransferView : UserControl
     public FoundGame? Game { get; }
 
     SaveFile Save => pending!.Save(saveId);
+
+    /// <summary>
+    /// Back to My saves. With unsaved changes it asks first (save, discard, or stay), so changes never sit pending
+    /// while the game is played and the save changes under them. With the sheet open, it closes the sheet.
+    /// </summary>
+    public void GoBack()
+    {
+        if (sheet is { IsVisible: true })
+            sheet.Hide();
+        else if (pending is null || pending.IsEmpty)
+            Back?.Invoke();
+        else
+            sheet!.Show(leaving: true);
+    }
 
     void OnReleased(object? sender, PointerReleasedEventArgs e)
     {
@@ -163,33 +183,6 @@ public partial class TransferView : UserControl
         Redraw();
     }
 
-    void SaveChanges()
-    {
-        if (pending is null || pending.IsEmpty)
-            return;
-        try
-        {
-            var result = pending.Save(DateTimeOffset.Now);
-            if (result.Written)
-            {
-                foreach (var line in result.Lines)
-                    AppLog.Write(line);
-                AppLog.Write("saved: the game and the bank are written, and each was backed up first");
-                Settle();
-            }
-            else
-            {
-                AppLog.Write($"not saved: {result.Refusal}");
-                Problem(result.Refusal);
-            }
-        }
-        catch (Exception ex) when (ex is ChangesetWriteException or InvalidOperationException or IOException or UnauthorizedAccessException)
-        {
-            AppLog.Write($"saving failed: {ex.Message}");
-            Problem(ex.Message);
-        }
-    }
-
     bool HasPokemon(Place place) => place switch
     {
         InSave s => InSlot(s.Slot) is not null,
@@ -253,12 +246,7 @@ public partial class TransferView : UserControl
         if (asking is not null)
             ShowChoice();
 
-        PendingText.Text = pending.IsEmpty
-            ? "Nothing yet. Moves show here and only happen when you tap Save."
-            : string.Join("\n", pending.Outcomes.SelectMany((o, i) =>
-                new[] { $"{i + 1}. {o.Description}" }
-                    .Concat(o.Notes.Select(n => "    " + n.Message))
-                    .Concat(o.Bookkeeping.Select(b => "    " + b))));
+        PendingText.Text = PendingSheet.Summary(pending);
         SaveButton.IsEnabled = UndoButton.IsEnabled = DiscardButton.IsEnabled = !pending.IsEmpty;
     }
 

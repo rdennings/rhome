@@ -53,15 +53,32 @@ public sealed class Changeset
     public string? SeenHash(Guid saveId) => _seen.GetValueOrDefault(saveId);
 
     /// <summary>Stages a change. Every save it touches must have been <see cref="Opened"/> first.</summary>
-    public void Add(Change change)
+    public void Add(Change change) => Insert(_changes.Count, change);
+
+    /// <summary>Stages a change at a place in the order, e.g. to put back one that was taken out.</summary>
+    public void Insert(int index, Change change)
+    {
+        CheckOpened(change);
+        _changes.Insert(index, change);
+    }
+
+    /// <summary>Swaps the change at <paramref name="index"/> for another, keeping its place in the order.</summary>
+    public void Replace(int index, Change change)
+    {
+        CheckOpened(change);
+        _changes[index] = change;
+    }
+
+    public bool Remove(Change change) => _changes.Remove(change);
+
+    public void RemoveAt(int index) => _changes.RemoveAt(index);
+
+    void CheckOpened(Change change)
     {
         foreach (var save in SavesOf(change))
             if (!_seen.ContainsKey(save))
                 throw new InvalidOperationException($"Open save {save} before staging changes to it.");
-        _changes.Add(change);
     }
-
-    public bool Remove(Change change) => _changes.Remove(change);
 
     public void Clear() => _changes.Clear();
 
@@ -78,7 +95,14 @@ public sealed class Changeset
 
 /// <summary>What one change does, for the pending-changes summary.</summary>
 /// <param name="Description">One line, e.g. "Withdraw Kirlia into Emerald, box 1 slot 2".</param>
-public sealed record ChangeOutcome(Change Change, string Description, IReadOnlyList<ConversionNote> Notes, IReadOnlyList<string> Bookkeeping);
+/// <param name="Notes">What a withdraw dropped or replaced on the way.</param>
+/// <param name="Bookkeeping">What the game's arrival bookkeeping changed, e.g. the Pokédex.</param>
+/// <param name="Kept">For a withdraw with <paramref name="Notes"/>: where the bank keeps what was dropped or replaced,
+/// e.g. "Kept in the bank with its Gen 4 data, …". Null when nothing was dropped, or when it isn't kept anywhere.</param>
+/// <param name="Movesets">For a withdraw into a game it has been in before with other moves: both movesets, so the
+/// user can pick (PLAN.md §5). Null when there's no choice to make.</param>
+public sealed record ChangeOutcome(Change Change, string Description, IReadOnlyList<ConversionNote> Notes, IReadOnlyList<string> Bookkeeping,
+    string? Kept = null, MovesetOptions? Movesets = null);
 
 /// <summary>The outcome of previewing or applying a changeset.</summary>
 public sealed class ChangesetResult
@@ -287,13 +311,19 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
             }
             case WithdrawChange w:
             {
-                if (bank.Pokemon.All(p => p.Id != w.PokemonId))
+                if (bank.Pokemon.Find(p => p.Id == w.PokemonId) is not { } record)
                     return (null, $"The bank has no Pokémon {w.PokemonId}.", []);
-                var result = Transfers.Withdraw(bank, w.PokemonId, open[w.SaveId].Save, w.SaveId, now, w.To, w.Moves);
+                var save = open[w.SaveId].Save;
+                // Both read the record as it is before the withdraw adds a snapshot in this save's format.
+                var options = record.IsInBank ? Transfers.Movesets(bank, record, save, now) : null;
+                var from = record.Newest.Format;
+                var result = Transfers.Withdraw(bank, w.PokemonId, save, w.SaveId, now, w.To, w.Moves);
                 if (!result.Succeeded)
                     return (null, result.Refusal, []);
                 var what = $"Withdraw {Species(result.Pokemon)} into {Name(bank, w.SaveId)}, {result.SaveSlot}";
-                return (new ChangeOutcome(change, what, result.Notes, result.Bookkeeping), null, []);
+                return (new ChangeOutcome(change, what, result.Notes, result.Bookkeeping,
+                    Kept(result.Notes, from, save.PKMType.Name),
+                    options?.LastInThisGame is null ? null : options), null, []);
             }
             case MoveInBankChange m:
             {
@@ -363,6 +393,28 @@ public sealed class ChangesetRunner(IBankStore bankStore, Func<Guid, ISaveLocati
             default:
                 throw new NotSupportedException($"Unknown change {change.GetType().Name}.");
         }
+    }
+
+    /// <summary>
+    /// Where the bank keeps what a withdraw dropped or replaced. The snapshot it was withdrawn from stays in the bank
+    /// when it's in another format, and the restore step brings its fields back in a game of that format (PLAN.md §5);
+    /// its moves are offered there as the moveset it had last time. Withdrawn from a snapshot in the save's own format,
+    /// the written Pokémon replaces that snapshot, so what was dropped isn't kept.
+    /// </summary>
+    static string? Kept(IReadOnlyList<ConversionNote> notes, string fromFormat, string toFormat)
+    {
+        if (notes.Count == 0 || fromFormat == toFormat)
+            return null;
+        var gen = fromFormat[^1];
+        var moves = notes.Any(n => n.Field == ChangedField.Moves);
+        var other = notes.Any(n => n.Field != ChangedField.Moves);
+        var kept = $"Kept in the bank with its Gen {gen} data";
+        return (moves, other) switch
+        {
+            (true, false) => $"{kept}: when it goes back to a Gen {gen} game, you can pick its Gen {gen} moves again.",
+            (true, true) => $"{kept}, and put back when it goes back to a Gen {gen} game (where you can pick its Gen {gen} moves again).",
+            _ => $"{kept}, and put back when it goes back to a Gen {gen} game.",
+        };
     }
 
     static string Species(BankPokemon pokemon) => EnglishNames.Species(pokemon.Summary.Species);

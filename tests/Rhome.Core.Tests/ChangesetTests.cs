@@ -270,4 +270,42 @@ public class ChangesetTests
         Assert.Equal(new BankSlot(2, 5), kirlia.Slot);
         Assert.False(kirlia.IsInBank);
     }
+
+    [Fact]
+    public void A_withdraw_says_what_the_bank_keeps_and_offers_the_moveset_it_had_last_time()
+    {
+        var world = new World("platinum-us", "emerald");
+        var platinum = world.Id("platinum-us");
+        var emerald = world.Id("emerald");
+        var id = Guid.NewGuid();
+
+        // Platinum → bank → Emerald: Kirlia loses Lucky Chant (a Gen 4 move), which its Gen 4 data keeps.
+        var out_ = world.Changeset("platinum-us", "emerald");
+        out_.Add(new ImportChange(platinum, new SaveSlot(null, 1), NewId: id));
+        out_.Add(new WithdrawChange(id, emerald));
+        var sent = world.Runner.Apply(out_, Monday);
+        Assert.True(sent.Written, sent.Refusal);
+        var withdraw = sent.Outcomes[1];
+        Assert.Contains(withdraw.Notes, n => n.Field == ChangedField.Moves);
+        Assert.Equal("Kept in the bank with its Gen 4 data, and put back when it goes back to a Gen 4 game " +
+                     "(where you can pick its Gen 4 moves again).", withdraw.Kept);
+        Assert.True(withdraw.Notes.Count > 1, string.Join("; ", withdraw.Notes));
+        Assert.Null(withdraw.Movesets); // it has never been in Gen 3 before
+        Assert.Null(sent.Outcomes[0].Kept);
+
+        // Back from Emerald, then into Platinum: its Emerald moves, or the Platinum ones with Lucky Chant.
+        var back = world.Changeset("emerald");
+        back.Add(new ImportChange(emerald, Assert.IsType<CheckOut>(world.Bank.Pokemon[0].CheckedOut).Slot));
+        Assert.True(world.Runner.Apply(back, Monday.AddHours(1)).Written);
+
+        var home = world.Changeset("platinum-us");
+        home.Add(new WithdrawChange(id, platinum));
+        var preview = world.Runner.Preview(home, Monday.AddHours(2));
+        var options = Assert.Single(preview.Outcomes).Movesets;
+        Assert.NotNull(options);
+        var lastTime = Assert.IsType<Moveset>(options.LastInThisGame);
+        Assert.Contains((ushort)Move.LuckyChant, new[] { lastTime.Move1, lastTime.Move2, lastTime.Move3, lastTime.Move4 });
+        Assert.DoesNotContain((ushort)Move.LuckyChant, new[] { options.Newest.Move1, options.Newest.Move2, options.Newest.Move3, options.Newest.Move4 });
+        Assert.Null(preview.Outcomes[0].Kept); // Gen 3 → 4 drops nothing
+    }
 }

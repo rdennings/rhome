@@ -7,21 +7,23 @@ namespace Rhome.App.Views;
 
 /// <summary>
 /// The bank's boxes (issue #44): create, rename, reorder and delete boxes, and move Pokémon between slots and boxes by
-/// tapping one, then where it goes. Everything is staged in <see cref="PendingChanges"/> until Save.
+/// tapping one, then where it goes. Everything is staged in <see cref="PendingChanges"/> until Save, in the
+/// pending-changes sheet (issue #46).
 /// </summary>
-public partial class BankView : UserControl
+public partial class BankView : UserControl, IGoesBack
 {
     readonly PendingChanges? pending;
+    readonly PendingSheet? sheet;
     int openBox;
     Guid? picked;
 
-    /// <summary>Raised when the user taps back to My saves. Pending changes stay pending.</summary>
+    /// <summary>Raised when the user goes back to My saves, once nothing is pending (saved, discarded, or none).</summary>
     public event Action? Back;
 
     public BankView()
     {
         InitializeComponent();
-        BackButton.Click += (_, _) => Back?.Invoke();
+        BackButton.Click += (_, _) => GoBack();
         BoxList.SelectionChanged += (_, _) =>
         {
             if ((BoxList.SelectedItem as Control)?.Tag is BankBox box && box.Id != openBox)
@@ -52,14 +54,23 @@ public partial class BankView : UserControl
             }
             Redraw();
         };
-        UndoButton.Click += (_, _) => { pending!.UndoLast(DateTimeOffset.Now); Settle(); };
+        UndoButton.Click += (_, _) =>
+        {
+            var refusal = pending!.Undo(pending.Outcomes.Count - 1, DateTimeOffset.Now);
+            Settle();
+            Problem(refusal);
+        };
         DiscardButton.Click += (_, _) => { pending!.Discard(); AppLog.Write("bank: discarded the pending changes"); Settle(); };
-        SaveButton.Click += (_, _) => Save();
+        SaveButton.Click += (_, _) => sheet?.Show(leaving: false);
     }
 
     public BankView(PendingChanges pending) : this()
     {
         this.pending = pending;
+        sheet = new PendingSheet(pending, "bank: ");
+        sheet.Changed += Settle;
+        sheet.Left += () => Back?.Invoke();
+        Root.Children.Add(sheet);
         openBox = pending.Bank.Boxes.Boxes[0].Id;
         NameBox.Text = pending.Bank.Boxes.Boxes[0].Name;
         if (pending.LoadProblem is { } problem)
@@ -71,6 +82,17 @@ public partial class BankView : UserControl
     }
 
     int Position => pending!.Bank.Boxes.Position(openBox);
+
+    /// <summary>Back to My saves; with unsaved changes it asks first. With the sheet open, it closes the sheet.</summary>
+    public void GoBack()
+    {
+        if (sheet is { IsVisible: true })
+            sheet.Hide();
+        else if (pending is null || pending.IsEmpty)
+            Back?.Invoke();
+        else
+            sheet!.Show(leaving: true);
+    }
 
     /// <summary>Stages a change; says why when it can't be done.</summary>
     bool Stage(Change change)
@@ -97,33 +119,6 @@ public partial class BankView : UserControl
             picked = null;
         Problem(null);
         Redraw();
-    }
-
-    void Save()
-    {
-        if (pending is null || pending.IsEmpty)
-            return;
-        try
-        {
-            var result = pending.Save(DateTimeOffset.Now);
-            if (result.Written)
-            {
-                foreach (var line in result.Lines)
-                    AppLog.Write($"bank: {line}");
-                AppLog.Write("bank: saved");
-                Settle();
-            }
-            else
-            {
-                AppLog.Write($"bank: not saved: {result.Refusal}");
-                Problem(result.Refusal);
-            }
-        }
-        catch (Exception ex) when (ex is ChangesetWriteException or InvalidOperationException or IOException or UnauthorizedAccessException)
-        {
-            AppLog.Write($"bank: saving failed: {ex.Message}");
-            Problem(ex.Message);
-        }
     }
 
     void Redraw()
@@ -158,9 +153,7 @@ public partial class BankView : UserControl
         DownButton.IsEnabled = editable && Position < boxes.Count;
         DeleteButton.IsEnabled = editable && boxes.Count > 1;
 
-        PendingText.Text = pending.IsEmpty
-            ? "Nothing yet. Changes show here and only happen when you tap Save."
-            : string.Join("\n", pending.Outcomes.Select((o, i) => $"{i + 1}. {o.Description}"));
+        PendingText.Text = PendingSheet.Summary(pending);
         SaveButton.IsEnabled = UndoButton.IsEnabled = DiscardButton.IsEnabled = !pending.IsEmpty;
     }
 
