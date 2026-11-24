@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Rhome.App.Views.TransferView">
     <!-- The split view (#45): a game's party and boxes on the left, the bank on the right. Every move is pending until Save. -->
-    <!-- The pending-changes sheet (#46) goes on top, from code. -->
+    <!-- The pending-changes sheet (#46) and the Pokémon detail view (#47) go on top, from code. -->
     <Panel x:Name="Root">
         <Grid Margin="16" ColumnDefinitions="*,16,*,16,0.8*" RowDefinitions="Auto,Auto,*">
             <DockPanel Grid.ColumnSpan="5" Margin="0,0,0,4">
@@ -31,7 +31,10 @@
 
             <!-- The bank -->
             <DockPanel Grid.Row="2" Grid.Column="2">
-                <TextBlock x:Name="HintText" DockPanel.Dock="Top" FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,8" MinHeight="64" />
+                <DockPanel DockPanel.Dock="Top" Margin="0,8,0,8" MinHeight="64">
+                    <Button x:Name="DetailsButton" DockPanel.Dock="Right" Content="Details" IsVisible="False" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <TextBlock x:Name="HintText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
                     <Button x:Name="BankPrev" DockPanel.Dock="Left" Content="‹" />
                     <Button x:Name="BankNext" DockPanel.Dock="Right" Content="›" />

@@ -15,12 +15,13 @@ namespace Rhome.App.Views;
 /// then where it goes, or drag it there. Each move is staged in <see cref="PendingChanges"/>, so the core's checks
 /// (generation lock, structural check, a full party) refuse a move straight away and say why. Nothing is written until
 /// Save, in the pending-changes sheet (issue #46). A Pokémon is only ever on one side: an import empties the game's
-/// slot, a withdraw leaves a placeholder.
+/// slot, a withdraw leaves a placeholder. Details opens the picked-up Pokémon's detail view (issue #47), on either side.
 /// </summary>
 public partial class TransferView : UserControl, IGoesBack
 {
     readonly PendingChanges? pending;
     readonly PendingSheet? sheet;
+    readonly PokemonSheet details = new();
     readonly Guid saveId;
     int saveBox = 1;
     int bankBox = 1;
@@ -50,6 +51,7 @@ public partial class TransferView : UserControl, IGoesBack
         UndoButton.Click += (_, _) => { Problem(pending!.Undo(pending.Outcomes.Count - 1, DateTimeOffset.Now)); picked = null; asking = null; Redraw(); };
         DiscardButton.Click += (_, _) => { pending!.Discard(); AppLog.Write("discarded the pending changes"); Settle(); };
         SaveButton.Click += (_, _) => sheet?.Show(leaving: false);
+        DetailsButton.Click += (_, _) => ShowDetails();
 
         // Drag: press on a Pokémon, let go over another slot. A press and release on one slot is a tap (Click).
         AddHandler(PointerPressedEvent, (_, e) => dragFrom = PlaceOf(e.Source as Visual) is { } p && HasPokemon(p) ? p : null,
@@ -65,6 +67,7 @@ public partial class TransferView : UserControl, IGoesBack
         sheet.Changed += Settle;
         sheet.Left += () => Back?.Invoke();
         Root.Children.Add(sheet);
+        Root.Children.Add(details);
         Game = opened.Game;
         TitleText.Text = $"{SaveText.Title(opened.Game)} ↔ Bank";
         CopiesText.Text = opened.Game.HasSeveralCopies
@@ -80,11 +83,13 @@ public partial class TransferView : UserControl, IGoesBack
 
     /// <summary>
     /// Back to My saves. With unsaved changes it asks first (save, discard, or stay), so changes never sit pending
-    /// while the game is played and the save changes under them. With the sheet open, it closes the sheet.
+    /// while the game is played and the save changes under them. With a sheet open, it closes the sheet.
     /// </summary>
     public void GoBack()
     {
-        if (sheet is { IsVisible: true })
+        if (details.IsVisible)
+            details.Hide();
+        else if (sheet is { IsVisible: true })
             sheet.Hide();
         else if (pending is null || pending.IsEmpty)
             Back?.Invoke();
@@ -240,6 +245,7 @@ public partial class TransferView : UserControl, IGoesBack
         HintText.Text = picked is null
             ? "Tap a Pokémon, then tap where it goes, or drag it there. Nothing is written until Save."
             : "Now tap where it goes (another box: use the arrows), or tap it again to put it down.";
+        DetailsButton.IsVisible = picked is not null;
 
         ChoicePanel.Children.Clear();
         ChoicePanel.IsVisible = asking is not null;
@@ -273,6 +279,18 @@ public partial class TransferView : UserControl, IGoesBack
         var cancel = new Button { Content = "Cancel" };
         cancel.Click += (_, _) => { asking = null; Redraw(); };
         ChoicePanel.Children.Add(new WrapPanel { Children = { asNew, cancel } });
+    }
+
+    void ShowDetails()
+    {
+        var shown = picked switch
+        {
+            InSave s => PokemonDetails.ForSave(pending!.Bank, Save, saveId, s.Slot, pending.SaveName(saveId), pending.SaveName),
+            InBank b when pending!.Bank.At(b.Slot) is { } pokemon => PokemonDetails.ForBank(pending.Bank, pokemon, pending.SaveName),
+            _ => null,
+        };
+        if (shown is not null)
+            details.Show(shown);
     }
 
     (string Name, string Detail, double Opacity) BankText(BankPokemon pokemon)

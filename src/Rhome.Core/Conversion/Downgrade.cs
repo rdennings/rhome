@@ -11,6 +11,10 @@ public static class Downgrade
     /// </summary>
     public static ConversionResult<PK3> Gen5ToGen3(PK5 pk5, GameVersion target)
     {
+        // Checked first, so a Unova Pokémon is refused for Gen 3 rather than for the Gen 4 step on the way.
+        if (pk5.Species is 0 or > Gen4To3.MaxSpecies)
+            return ConversionResult<PK3>.Refused($"{EnglishNames.Species(pk5.Species)} doesn't exist in the Gen 3 games.");
+
         var gen4 = Gen5To4.Convert(pk5, GameVersion.Pt);
         if (!gen4.Succeeded)
             return ConversionResult<PK3>.Refused(gen4.Refusal);

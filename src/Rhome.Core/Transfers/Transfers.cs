@@ -258,13 +258,42 @@ public static class Transfers
         if (record.SnapshotIn(format) is { } own)
         {
             var ownPk = own.ToPkm();
-            var newestGame = bank.Saves.Find(s => s.Id == newest.FromSave)?.Game ?? DefaultGame(newestPk);
-            FormatRestore.Apply(pk, newestPk, ownPk, newestGame, now, notes);
+            FormatRestore.Apply(pk, newestPk, ownPk, GameOf(bank, newest), now, notes);
             notes.RemoveAll(n => Restored(n, pk));
             ChooseMoves(pk, newestPk, ownPk, moves, save.MaxMoveID, notes);
         }
+        else if (PassedThrough(record, newest, save, now) is { } passed)
+        {
+            // It arrives in this generation now, at its level now, as a transfer records it.
+            var (metLevel, metDate) = (pk.MetLevel, pk.MetDate);
+            FormatRestore.Apply(pk, newestPk, passed, GameOf(bank, newest), now, notes);
+            pk.MetLevel = metLevel;
+            pk.MetDate = metDate;
+            pk.RefreshChecksum();
+            notes.RemoveAll(n => Restored(n, pk));
+        }
         KeepFullPP(pk, newestPk);
         return Fit(pk, save, notes);
+    }
+
+    /// <summary>
+    /// A Pokémon going up to a generation it has never been in, from data in an older one, may have come down through
+    /// a generation in between: Platinum's Eevee, taken to LeafGreen and then on to White. Its data there holds what
+    /// the older generation lost on the way down (a Gen 3 game can't record a Gen 4 origin, ribbons, a hidden ability),
+    /// so it's converted up to this save's format and restored from, as if the Pokémon went back there first and then
+    /// on here. Null when there's no such data.
+    /// </summary>
+    static PKM? PassedThrough(BankPokemon record, Snapshot newest, SaveFile save, DateTimeOffset now)
+    {
+        var from = newest.Format[^1];
+        var to = save.PKMType.Name[^1];
+        var between = record.Snapshots
+            .Where(s => Snapshot.KnownFormats.Contains(s.Format) && s.Format[^1] > from && s.Format[^1] < to)
+            .MaxBy(s => s.Format);
+        if (between is null)
+            return null;
+        var converted = Formats.Convert(between.ToPkm(), SaveDetector.GameOf(save), now);
+        return converted.Succeeded ? converted.Pokemon : null;
     }
 
     /// <summary>
@@ -372,12 +401,17 @@ public static class Transfers
         return ConversionResult<PKM>.Converted(pk, notes);
     }
 
-    static GameVersion DefaultGame(PKM pk) => pk.Format switch
-    {
-        3 => GameVersion.E,
-        4 => GameVersion.Pt,
-        _ => GameVersion.W2,
-    };
+    /// <summary>
+    /// The game a snapshot was read from or written to, or a stand-in game of its format when the bank doesn't know
+    /// that save: Emerald, Platinum or White 2, which hold everything their format can.
+    /// </summary>
+    public static GameVersion GameOf(Bank bank, Snapshot snapshot) =>
+        bank.Saves.Find(s => s.Id == snapshot.FromSave)?.Game ?? snapshot.Format switch
+        {
+            "PK3" => GameVersion.E,
+            "PK4" => GameVersion.Pt,
+            _ => GameVersion.W2,
+        };
 
     /// <summary>The 0-based index PKHeX uses for a slot, or why the slot doesn't exist in this save.</summary>
     static bool TryIndex(SaveFile save, SaveSlot slot, out int index, out string problem)

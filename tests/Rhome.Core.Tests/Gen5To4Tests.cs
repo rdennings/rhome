@@ -396,7 +396,8 @@ public class Gen5To4Tests
     [Fact]
     public void Gen_5_to_Gen_3_refuses_what_either_step_refuses()
     {
-        Assert.False(Downgrade.Gen5ToGen3((PK5)Fixtures.Party("white", 1), GameVersion.E).Succeeded);
+        // A Unova Pokémon is refused for Gen 3, not for the Gen 4 step on the way.
+        Assert.Equal("Snivy doesn't exist in the Gen 3 games.", Downgrade.Gen5ToGen3((PK5)Fixtures.Party("white", 1), GameVersion.E).Refusal);
         Assert.Equal("Luxray doesn't exist in the Gen 3 games.",
             Downgrade.Gen5ToGen3(WhiteCaught(Species.Luxray), GameVersion.E).Refusal);
     }

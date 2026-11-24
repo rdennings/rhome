@@ -38,6 +38,35 @@ public class ReturnTests
     }
 
     [Fact]
+    public void A_Pokemon_that_went_down_to_Gen_3_keeps_its_origin_when_it_goes_on_to_Gen_5()
+    {
+        // Platinum's Kirlia goes to LeafGreen, which can't record a Gen 4 origin or keep its Sinnoh ribbon…
+        var bank = new TestBank("platinum-us", "leafgreen", "white");
+        var original = (PK4)Fixtures.Party("platinum-us", 1);
+        original.RibbonChampionSinnoh = true;
+        original.RefreshChecksum();
+        var record = bank.Add(original, "platinum-us");
+        var out_ = Ok(bank.Withdraw(record, "leafgreen"));
+        Assert.NotEqual(GameVersion.Pt, out_.Written!.Version);
+
+        // …levels up there, comes back, and goes on to White, a generation it has never been in.
+        Play(bank.Save("leafgreen"), out_.SaveSlot!.Value, pk => pk.EXP = Experience.GetEXP(25, pk.PersonalInfo.EXPGrowth));
+        Ok(bank.Import("leafgreen", out_.SaveSlot!.Value, Wednesday));
+        var white = (PK5)Ok(bank.Withdraw(record, "white", when: Thursday)).Written!;
+
+        // As if it had gone back to Platinum first: still from Platinum, with its ribbon, ball and PID…
+        Assert.Equal(GameVersion.Pt, white.Version);
+        Assert.True(white.RibbonChampionSinnoh);
+        Assert.Equal(original.Ball, white.Ball);
+        Assert.Equal(original.PID, white.PID);
+        // …brought over by Poké Transfer now, at the level it reached in LeafGreen.
+        Assert.Equal("Poké Transfer", EnglishNames.Location(white, egg: false));
+        Assert.Equal(25, white.CurrentLevel);
+        Assert.Equal(25, white.MetLevel);
+        Assert.Equal(DateOnly.FromDateTime(Thursday.Date), white.MetDate);
+    }
+
+    [Fact]
     public void A_Pokemon_that_levelled_up_and_learned_a_move_elsewhere_comes_back_with_its_progress()
     {
         var (bank, record, original) = KirliaInTheBank();
