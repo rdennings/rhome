@@ -52,6 +52,8 @@ public sealed class PendingSheet : Border
             Margin = new Thickness(16),
             Padding = new Thickness(20),
             CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(Colors.Gray, 0.5), // so it stands out from the dimmed screen in the dark theme
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new DockPanel

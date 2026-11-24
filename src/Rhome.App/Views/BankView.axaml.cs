@@ -8,12 +8,13 @@ namespace Rhome.App.Views;
 /// <summary>
 /// The bank's boxes (issue #44): create, rename, reorder and delete boxes, and move Pokémon between slots and boxes by
 /// tapping one, then where it goes. Everything is staged in <see cref="PendingChanges"/> until Save, in the
-/// pending-changes sheet (issue #46).
+/// pending-changes sheet (issue #46). Details opens the picked-up Pokémon's detail view (issue #47).
 /// </summary>
 public partial class BankView : UserControl, IGoesBack
 {
     readonly PendingChanges? pending;
     readonly PendingSheet? sheet;
+    readonly PokemonSheet details = new();
     int openBox;
     Guid? picked;
 
@@ -62,6 +63,7 @@ public partial class BankView : UserControl, IGoesBack
         };
         DiscardButton.Click += (_, _) => { pending!.Discard(); AppLog.Write("bank: discarded the pending changes"); Settle(); };
         SaveButton.Click += (_, _) => sheet?.Show(leaving: false);
+        DetailsButton.Click += (_, _) => ShowDetails();
     }
 
     public BankView(PendingChanges pending) : this()
@@ -71,6 +73,7 @@ public partial class BankView : UserControl, IGoesBack
         sheet.Changed += Settle;
         sheet.Left += () => Back?.Invoke();
         Root.Children.Add(sheet);
+        Root.Children.Add(details);
         openBox = pending.Bank.Boxes.Boxes[0].Id;
         NameBox.Text = pending.Bank.Boxes.Boxes[0].Name;
         if (pending.LoadProblem is { } problem)
@@ -83,10 +86,12 @@ public partial class BankView : UserControl, IGoesBack
 
     int Position => pending!.Bank.Boxes.Position(openBox);
 
-    /// <summary>Back to My saves; with unsaved changes it asks first. With the sheet open, it closes the sheet.</summary>
+    /// <summary>Back to My saves; with unsaved changes it asks first. With a sheet open, it closes the sheet.</summary>
     public void GoBack()
     {
-        if (sheet is { IsVisible: true })
+        if (details.IsVisible)
+            details.Hide();
+        else if (sheet is { IsVisible: true })
             sheet.Hide();
         else if (pending is null || pending.IsEmpty)
             Back?.Invoke();
@@ -144,6 +149,8 @@ public partial class BankView : UserControl, IGoesBack
             ? $"Holding {Label(holding)}: tap a slot to put it there (a Pokémon already there swaps places), or tap it again to put it back."
             : "Tap a Pokémon to pick it up, then tap where it goes. Pick another box on the left to move it there.";
 
+        DetailsButton.IsVisible = picked is not null;
+
         SlotGrid.Children.Clear();
         for (var slot = 1; slot <= BankBox.SlotCount; slot++)
             SlotGrid.Children.Add(Slot(bank, new BankSlot(box.Id, slot), editable));
@@ -200,6 +207,13 @@ public partial class BankView : UserControl, IGoesBack
             picked = null;
         }
         Redraw();
+    }
+
+    void ShowDetails()
+    {
+        var bank = pending!.Bank;
+        if (picked is { } id && bank.Pokemon.Find(p => p.Id == id) is { } pokemon)
+            details.Show(PokemonDetails.ForBank(bank, pokemon, pending.SaveName));
     }
 
     static string Label(BankPokemon pokemon) =>

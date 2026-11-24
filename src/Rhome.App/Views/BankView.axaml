@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Rhome.App.Views.BankView">
     <!-- The bank's boxes (#44): every change is pending until Save. -->
-    <!-- The pending-changes sheet (#46) goes on top, from code. -->
+    <!-- The pending-changes sheet (#46) and the Pokémon detail view (#47) go on top, from code. -->
     <Panel x:Name="Root">
         <Grid Margin="16" ColumnDefinitions="1.2*,16,3*,16,1.5*" RowDefinitions="Auto,*">
             <DockPanel Grid.ColumnSpan="5" Margin="0,0,0,12">
@@ -32,7 +32,10 @@
             <!-- The open box -->
             <DockPanel Grid.Row="1" Grid.Column="2">
                 <TextBlock x:Name="BoxTitle" DockPanel.Dock="Top" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4" />
-                <TextBlock x:Name="HintText" DockPanel.Dock="Top" FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8" />
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <Button x:Name="DetailsButton" DockPanel.Dock="Right" Content="Details" IsVisible="False" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <TextBlock x:Name="HintText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
                 <UniformGrid x:Name="SlotGrid" Columns="6" Rows="5" />
             </DockPanel>
 
