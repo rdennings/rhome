@@ -7,6 +7,10 @@
     <PackageReference Include="Avalonia.Fonts.Inter" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Which sprite file shows each Pokémon (issue #48): numbers and file names only, written by tools/Rhome.SpriteTable. -->
+    <EmbeddedResource Include="Sprites/sprites.json" LogicalName="Rhome.App.Sprites.sprites.json" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Rhome.Core/Rhome.Core.csproj" />
     <ProjectReference Include="../Rhome.FileSystem/Rhome.FileSystem.csproj" />
   </ItemGroup>

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Rhome.App.Sprites;
 using Rhome.Core;
 
 namespace Rhome.App.Views;
@@ -146,7 +147,7 @@ public partial class BankView : UserControl, IGoesBack
 
         BoxTitle.Text = box.Name;
         HintText.Text = picked is { } id && bank.Pokemon.Find(p => p.Id == id) is { } holding
-            ? $"Holding {Label(holding)}: tap a slot to put it there (a Pokémon already there swaps places), or tap it again to put it back."
+            ? $"Holding {Label(holding)}{Away(bank, holding)}: tap a slot to put it there (a Pokémon already there swaps places), or tap it again to put it back."
             : "Tap a Pokémon to pick it up, then tap where it goes. Pick another box on the left to move it there.";
 
         DetailsButton.IsVisible = picked is not null;
@@ -167,23 +168,20 @@ public partial class BankView : UserControl, IGoesBack
     Control Slot(Bank bank, BankSlot slot, bool editable)
     {
         var pokemon = bank.At(slot);
-        var text = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        Control? face = null;
         if (pokemon is not null)
         {
-            text.Children.Add(new TextBlock { Text = Label(pokemon), FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Center });
-            var detail = pokemon.CheckedOut is { } away
-                ? $"out in {bank.Saves.Find(s => s.Id == away.SaveId)?.DisplayName ?? "a game"}"
-                : $"Lv{pokemon.Summary.Level}{(pokemon.Summary.IsShiny ? " ★" : "")}";
-            text.Children.Add(new TextBlock { Text = detail, FontSize = 11, Opacity = 0.7, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Center });
+            var sprite = SpriteRequest.Of(pokemon);
+            face = SlotFace.For(sprite, Label(pokemon), SlotFace.Line(sprite.IsEgg, pokemon.Summary.Level, pokemon.Summary.Gender), 13);
         }
 
         var button = new Button
         {
-            Content = text,
+            Content = face,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
             Margin = new Avalonia.Thickness(2),
             Opacity = pokemon is { IsInBank: false } ? 0.6 : 1,
             IsEnabled = editable && (pokemon is not null || picked is not null),
@@ -215,6 +213,11 @@ public partial class BankView : UserControl, IGoesBack
         if (picked is { } id && bank.Pokemon.Find(p => p.Id == id) is { } pokemon)
             details.Show(PokemonDetails.ForBank(bank, pokemon, pending.SaveName));
     }
+
+    /// <summary>Where a Pokémon that's out in a game is (its slot here is kept for it, and shows dimmed).</summary>
+    static string Away(Bank bank, BankPokemon pokemon) => pokemon.CheckedOut is { } away
+        ? $" (out in {bank.Saves.Find(s => s.Id == away.SaveId)?.DisplayName ?? "a game"})"
+        : "";
 
     static string Label(BankPokemon pokemon) =>
         pokemon.Summary.IsNicknamed ? pokemon.Summary.Nickname : EnglishNames.Species(pokemon.Summary.Species);

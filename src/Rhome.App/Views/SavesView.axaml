@@ -3,29 +3,33 @@
              xmlns:views="using:Rhome.App.Views"
              x:Class="Rhome.App.Views.SavesView">
     <!-- My saves (#43): the saves the last scan found, checked on every launch. One tap opens a save. -->
-    <Grid Margin="16" ColumnDefinitions="3*,16,2*" RowDefinitions="Auto,*">
-        <DockPanel Grid.ColumnSpan="3" Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Button x:Name="BankButton" Content="Bank" Classes="accent" />
-                <Button x:Name="ScanButton" Content="Scan now" />
-                <Button x:Name="SetupButton" Content="Set up again" />
-            </StackPanel>
-            <StackPanel VerticalAlignment="Center">
-                <TextBlock x:Name="SavesHeader" Text="My saves" FontSize="24" FontWeight="SemiBold" />
-                <TextBlock x:Name="StatusText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-            </StackPanel>
-        </DockPanel>
+    <!-- About (#48: sprite credits and download) goes on top, from code. -->
+    <Panel x:Name="Root">
+        <Grid Margin="16" ColumnDefinitions="3*,16,2*" RowDefinitions="Auto,*">
+            <DockPanel Grid.ColumnSpan="3" Margin="0,0,0,12">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button x:Name="BankButton" Content="Bank" Classes="accent" />
+                    <Button x:Name="ScanButton" Content="Scan now" />
+                    <Button x:Name="SetupButton" Content="Set up again" />
+                    <Button x:Name="AboutButton" Content="About" />
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="SavesHeader" Text="My saves" FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock x:Name="StatusText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                </StackPanel>
+            </DockPanel>
 
-        <DockPanel Grid.Row="1" Grid.Column="0">
-            <TextBlock x:Name="Notices" DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="DarkOrange" IsVisible="False" Margin="0,0,0,8" />
-            <TextBlock x:Name="EmptyText" DockPanel.Dock="Top" TextWrapping="Wrap" IsVisible="False"
-                       Text="No Pokémon saves found. Play a little and save in game, then tap Scan now. If a folder is missing, tap Set up again." />
-            <ListBox x:Name="SavesList" />
-        </DockPanel>
+            <DockPanel Grid.Row="1" Grid.Column="0">
+                <TextBlock x:Name="Notices" DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="DarkOrange" IsVisible="False" Margin="0,0,0,8" />
+                <TextBlock x:Name="EmptyText" DockPanel.Dock="Top" TextWrapping="Wrap" IsVisible="False"
+                           Text="No Pokémon saves found. Play a little and save in game, then tap Scan now. If a folder is missing, tap Set up again." />
+                <ListBox x:Name="SavesList" />
+            </DockPanel>
 
-        <DockPanel Grid.Row="1" Grid.Column="2">
-            <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
-            <views:LogView />
-        </DockPanel>
-    </Grid>
+            <DockPanel Grid.Row="1" Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
+                <views:LogView />
+            </DockPanel>
+        </Grid>
+    </Panel>
 </UserControl>

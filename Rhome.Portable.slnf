@@ -10,7 +10,8 @@
       "tests/Rhome.Core.Tests/Rhome.Core.Tests.csproj",
       "tests/Rhome.FileSystem.Tests/Rhome.FileSystem.Tests.csproj",
       "tools/Rhome.Cli/Rhome.Cli.csproj",
-      "tools/Rhome.FixtureScrubber/Rhome.FixtureScrubber.csproj"
+      "tools/Rhome.FixtureScrubber/Rhome.FixtureScrubber.csproj",
+      "tools/Rhome.SpriteTable/Rhome.SpriteTable.csproj"
     ]
   }
 }
