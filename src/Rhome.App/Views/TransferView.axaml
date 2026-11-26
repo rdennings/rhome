@@ -1,61 +1,95 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Rhome.App.Views"
              x:Class="Rhome.App.Views.TransferView">
-    <!-- The split view (#45): a game's party and boxes on the left, the bank on the right. Every move is pending until Save. -->
+    <!-- The split view (#45), laid out as mockup A (#49): the game and the bank side by side, then the picked-up
+         Pokémon and the pending list. Every move is pending until Save. -->
     <!-- The pending-changes sheet (#46) and the Pokémon detail view (#47) go on top, from code. -->
     <Panel x:Name="Root">
-        <Grid Margin="16" ColumnDefinitions="*,16,*,16,0.8*" RowDefinitions="Auto,Auto,*">
-            <DockPanel Grid.ColumnSpan="5" Margin="0,0,0,4">
-                <Button x:Name="BackButton" DockPanel.Dock="Left" Content="‹ My saves" VerticalAlignment="Center" Margin="0,0,12,0" />
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock x:Name="TitleText" FontSize="22" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                    <TextBlock x:Name="CopiesText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+        <DockPanel Margin="12">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <Button x:Name="BackButton" DockPanel.Dock="Left" Margin="0,0,10,0" Padding="8,0,14,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Path Classes="icon" Data="M15 18l-6-6 6-6" />
+                        <TextBlock Text="My saves" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="SaveButton" DockPanel.Dock="Right" Classes="accent" Content="Review and save" Margin="8,0,0,0" />
+                <Button x:Name="UndoButton" DockPanel.Dock="Right" Classes="icon" Margin="8,0,0,0"
+                        ToolTip.Tip="Undo last move" AutomationProperties.Name="Undo last move">
+                    <Path Classes="icon" Data="M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3" />
+                </Button>
+                <Border x:Name="PendingPill" DockPanel.Dock="Right" Classes="pill" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <TextBlock x:Name="PendingCount" />
+                </Border>
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="TitleText" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="CopiesText" FontSize="11" Classes="muted" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </DockPanel>
-            <TextBlock x:Name="ProblemText" Grid.Row="1" Grid.ColumnSpan="5" Foreground="DarkOrange" TextWrapping="Wrap"
-                       IsVisible="False" Margin="0,4,0,4" />
+            <TextBlock x:Name="ProblemText" DockPanel.Dock="Top" Classes="problem" IsVisible="False" Margin="0,0,0,8" />
+            <Border x:Name="ChoiceCard" DockPanel.Dock="Top" Classes="card" Padding="12" Margin="0,0,0,10" IsVisible="False">
+                <StackPanel x:Name="ChoicePanel" Spacing="6" />
+            </Border>
 
-            <!-- The game -->
-            <DockPanel Grid.Row="2" Grid.Column="0">
-                <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,8,0,8">
-                    <TextBlock Text="Party" FontSize="15" FontWeight="SemiBold" />
-                    <UniformGrid x:Name="PartyGrid" Columns="6" Rows="1" Height="80" />
-                </StackPanel>
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
-                    <Button x:Name="SavePrev" DockPanel.Dock="Left" Content="‹" />
-                    <Button x:Name="SaveNext" DockPanel.Dock="Right" Content="›" />
-                    <TextBlock x:Name="SaveBoxTitle" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </DockPanel>
-                <UniformGrid x:Name="SaveGrid" Columns="6" Rows="5" />
-            </DockPanel>
+            <!-- On a two-screen device the last column goes to the bottom screen (#49): see SetDual. -->
+            <Grid x:Name="Columns" ColumnDefinitions="*,10,*,10,210">
+                <!-- The game -->
+                <Border Grid.Column="0" Classes="card">
+                    <DockPanel>
+                        <TextBlock x:Name="GameLabel" DockPanel.Dock="Top" Classes="label" />
+                        <UniformGrid x:Name="PartyGrid" DockPanel.Dock="Top" Columns="6" Rows="1" Height="46" Margin="-2.5,6,-2.5,0" />
+                        <DockPanel DockPanel.Dock="Top" Margin="0,4">
+                            <Button x:Name="SavePrev" DockPanel.Dock="Left" Classes="icon bare" AutomationProperties.Name="Previous box">
+                                <Path Classes="icon" Data="M15 18l-6-6 6-6" />
+                            </Button>
+                            <Button x:Name="SaveNext" DockPanel.Dock="Right" Classes="icon bare" AutomationProperties.Name="Next box">
+                                <Path Classes="icon" Data="M9 18l6-6-6-6" />
+                            </Button>
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock x:Name="SaveBoxTitle" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock x:Name="SaveBoxCount" FontSize="11" Classes="muted" VerticalAlignment="Bottom" />
+                            </StackPanel>
+                        </DockPanel>
+                        <UniformGrid x:Name="SaveGrid" Columns="6" Rows="5" Margin="-2.5,0" />
+                    </DockPanel>
+                </Border>
 
-            <!-- The bank -->
-            <DockPanel Grid.Row="2" Grid.Column="2">
-                <DockPanel DockPanel.Dock="Top" Margin="0,8,0,8" MinHeight="64">
-                    <Button x:Name="DetailsButton" DockPanel.Dock="Right" Content="Details" IsVisible="False" VerticalAlignment="Center" Margin="8,0,0,0" />
-                    <TextBlock x:Name="HintText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" VerticalAlignment="Center" />
-                </DockPanel>
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
-                    <Button x:Name="BankPrev" DockPanel.Dock="Left" Content="‹" />
-                    <Button x:Name="BankNext" DockPanel.Dock="Right" Content="›" />
-                    <TextBlock x:Name="BankBoxTitle" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </DockPanel>
-                <UniformGrid x:Name="BankGrid" Columns="6" Rows="5" />
-            </DockPanel>
+                <!-- The bank -->
+                <Border Grid.Column="2" Classes="card">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Classes="label" Text="BANK" />
+                        <TextBlock x:Name="HintText" DockPanel.Dock="Top" Height="46" Margin="0,6,0,0" FontSize="12" Classes="muted"
+                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <DockPanel DockPanel.Dock="Top" Margin="0,4">
+                            <Button x:Name="BankPrev" DockPanel.Dock="Left" Classes="icon bare" AutomationProperties.Name="Previous bank box">
+                                <Path Classes="icon" Data="M15 18l-6-6 6-6" />
+                            </Button>
+                            <Button x:Name="BankNext" DockPanel.Dock="Right" Classes="icon bare" AutomationProperties.Name="Next bank box">
+                                <Path Classes="icon" Data="M9 18l6-6-6-6" />
+                            </Button>
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock x:Name="BankBoxTitle" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock x:Name="BankBoxCount" FontSize="11" Classes="muted" VerticalAlignment="Bottom" />
+                            </StackPanel>
+                        </DockPanel>
+                        <UniformGrid x:Name="BankGrid" Columns="6" Rows="5" Margin="-2.5,0" />
+                    </DockPanel>
+                </Border>
 
-            <!-- Pending changes -->
-            <DockPanel Grid.Row="2" Grid.Column="4">
-                <TextBlock DockPanel.Dock="Top" Text="Pending changes" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,8" />
-                <StackPanel x:Name="ChoicePanel" DockPanel.Dock="Top" Spacing="6" IsVisible="False" Margin="0,0,0,12" />
-                <WrapPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-                    <Button x:Name="SaveButton" Content="Review and save" Classes="accent" Margin="0,0,8,8" />
-                    <Button x:Name="UndoButton" Content="Undo last" Margin="0,0,8,8" />
-                    <Button x:Name="DiscardButton" Content="Discard all" Margin="0,0,8,8" />
-                </WrapPanel>
-                <ScrollViewer>
-                    <TextBlock x:Name="PendingText" TextWrapping="Wrap" />
-                </ScrollViewer>
-            </DockPanel>
-        </Grid>
+                <!-- The picked-up Pokémon, and the pending list -->
+                <DockPanel x:Name="Aside" Grid.Column="4">
+                    <views:SelectedCard x:Name="Selected" DockPanel.Dock="Top" Margin="0,0,0,10" />
+                    <Border Classes="card" Padding="12">
+                        <DockPanel>
+                            <TextBlock x:Name="PendingLabel" DockPanel.Dock="Top" Classes="label" Margin="0,0,0,8" />
+                            <ScrollViewer>
+                                <StackPanel x:Name="PendingPanel" />
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
     </Panel>
 </UserControl>

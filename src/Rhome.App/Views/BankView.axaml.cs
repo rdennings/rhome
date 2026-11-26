@@ -11,8 +11,10 @@ namespace Rhome.App.Views;
 /// tapping one, then where it goes. Everything is staged in <see cref="PendingChanges"/> until Save, in the
 /// pending-changes sheet (issue #46). Details opens the picked-up Pokémon's detail view (issue #47).
 /// </summary>
-public partial class BankView : UserControl, IGoesBack
+public partial class BankView : UserControl, IGoesBack, IDualScreen
 {
+    readonly BottomPanel bottom = new();
+    bool dual;
     readonly PendingChanges? pending;
     readonly PendingSheet? sheet;
     readonly PokemonSheet details = new();
@@ -56,15 +58,36 @@ public partial class BankView : UserControl, IGoesBack
             }
             Redraw();
         };
-        UndoButton.Click += (_, _) =>
-        {
-            var refusal = pending!.Undo(pending.Outcomes.Count - 1, DateTimeOffset.Now);
-            Settle();
-            Problem(refusal);
-        };
-        DiscardButton.Click += (_, _) => { pending!.Discard(); AppLog.Write("bank: discarded the pending changes"); Settle(); };
+        UndoButton.Click += (_, _) => UndoLast();
         SaveButton.Click += (_, _) => sheet?.Show(leaving: false);
-        DetailsButton.Click += (_, _) => ShowDetails();
+        Selected.Click += (_, _) => ShowDetails();
+        Selected.Hint = bottom.Selected.Hint = "Tap a Pokémon to pick it up. Its moves and where it's from show here; tap this card for everything.";
+
+        // The bottom screen's panel, on a two-screen device (issue #49)
+        bottom.Selected.Click += (_, _) => ShowDetails();
+        bottom.Save.Click += (_, _) => sheet?.Show(leaving: false);
+        bottom.Undo.Click += (_, _) => UndoLast();
+        bottom.Discard.Click += (_, _) => { pending!.Discard(); AppLog.Write("bank: discarded the pending changes"); Settle(); };
+    }
+
+    public Control Bottom => bottom;
+
+    /// <summary>With a second screen, the picked-up Pokémon, the pending list and Save go to the bottom screen.</summary>
+    public void SetDual(bool dual)
+    {
+        this.dual = dual;
+        Aside.IsVisible = !dual;
+        Columns.ColumnDefinitions[3].Width = new GridLength(dual ? 0 : 10);
+        Columns.ColumnDefinitions[4].Width = new GridLength(dual ? 0 : 210);
+        UndoButton.IsVisible = SaveButton.IsVisible = !dual;
+        Redraw();
+    }
+
+    void UndoLast()
+    {
+        var refusal = pending!.Undo(pending.Outcomes.Count - 1, DateTimeOffset.Now);
+        Settle();
+        Problem(refusal);
     }
 
     public BankView(PendingChanges pending) : this()
@@ -146,11 +169,16 @@ public partial class BankView : UserControl, IGoesBack
         BoxList.SelectedItem = items.First(i => i.Tag == box);
 
         BoxTitle.Text = box.Name;
+        BoxCount.Text = $"{bank.Pokemon.Count(p => p.Slot.Box == box.Id)} / {BankBox.SlotCount}";
         HintText.Text = picked is { } id && bank.Pokemon.Find(p => p.Id == id) is { } holding
             ? $"Holding {Label(holding)}{Away(bank, holding)}: tap a slot to put it there (a Pokémon already there swaps places), or tap it again to put it back."
             : "Tap a Pokémon to pick it up, then tap where it goes. Pick another box on the left to move it there.";
 
-        DetailsButton.IsVisible = picked is not null;
+        var shownDetails = picked is { } shown && bank.Pokemon.Find(p => p.Id == shown) is { } pokemon
+            ? PokemonDetails.ForBank(bank, pokemon, pending.SaveName)
+            : null;
+        Selected.Show(shownDetails);
+        bottom.Selected.Show(shownDetails);
 
         SlotGrid.Children.Clear();
         for (var slot = 1; slot <= BankBox.SlotCount; slot++)
@@ -161,8 +189,13 @@ public partial class BankView : UserControl, IGoesBack
         DownButton.IsEnabled = editable && Position < boxes.Count;
         DeleteButton.IsEnabled = editable && boxes.Count > 1;
 
-        PendingText.Text = PendingSheet.Summary(pending);
-        SaveButton.IsEnabled = UndoButton.IsEnabled = DiscardButton.IsEnabled = !pending.IsEmpty;
+        var lines = PendingView.Lines(pending);
+        PendingLabel.Text = lines.Count == 0 ? "PENDING" : $"PENDING · {lines.Count}";
+        PendingList.Fill(PendingPanel, lines, "Nothing yet. Changes show here and only happen when you save.");
+        bottom.ShowPending(lines, "Nothing yet. Changes show here and only happen when you save.");
+        PendingPill.IsVisible = !dual && lines.Count > 0;
+        PendingCount.Text = $"{lines.Count} pending";
+        SaveButton.IsEnabled = UndoButton.IsEnabled = !pending.IsEmpty;
     }
 
     Control Slot(Bank bank, BankSlot slot, bool editable)
@@ -172,22 +205,14 @@ public partial class BankView : UserControl, IGoesBack
         if (pokemon is not null)
         {
             var sprite = SpriteRequest.Of(pokemon);
-            face = SlotFace.For(sprite, Label(pokemon), SlotFace.Line(sprite.IsEgg, pokemon.Summary.Level, pokemon.Summary.Gender), 13);
+            face = SlotFace.For(sprite, Label(pokemon), SlotFace.Line(sprite.IsEgg, pokemon.Summary.Level, pokemon.Summary.Gender), 10);
         }
 
-        var button = new Button
-        {
-            Content = face,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            VerticalContentAlignment = VerticalAlignment.Stretch,
-            Margin = new Avalonia.Thickness(2),
-            Opacity = pokemon is { IsInBank: false } ? 0.6 : 1,
-            IsEnabled = editable && (pokemon is not null || picked is not null),
-        };
-        if (pokemon is not null && pokemon.Id == picked)
-            button.Classes.Add("accent");
+        var state = pokemon is null ? SlotState.Normal
+            : pokemon.Id == picked ? SlotState.Picked
+            : pokemon.IsInBank ? SlotState.Normal : SlotState.Away;
+        var button = SlotFace.Button(face, state);
+        button.IsEnabled = editable && (pokemon is not null || picked is not null);
         button.Click += (_, _) => Tap(pokemon, slot);
         return button;
     }

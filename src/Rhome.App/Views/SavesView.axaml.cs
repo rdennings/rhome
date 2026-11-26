@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -9,8 +10,19 @@ namespace Rhome.App.Views;
 /// My saves (issue #43): shows the known saves at once, then checks them (the launch check: only the known files, no
 /// folder listing). Scan now finds new saves. One tap opens a save, reading it again first if it changed.
 /// </summary>
-public partial class SavesView : UserControl
+public partial class SavesView : UserControl, IDualScreen
 {
+    /// <summary>Nothing of its own for the bottom screen: the log goes there.</summary>
+    public Control? Bottom => null;
+
+    /// <summary>With a second screen the log is on the bottom screen, so this one gets the whole top screen.</summary>
+    public void SetDual(bool dual)
+    {
+        LogCard.IsVisible = !dual;
+        Columns.ColumnDefinitions[1].Width = new GridLength(dual ? 0 : 10);
+        Columns.ColumnDefinitions[2].Width = dual ? new GridLength(0) : new GridLength(2, GridUnitType.Star);
+    }
+
     readonly MySaves? saves;
     readonly AboutSheet about = new();
     bool busy;

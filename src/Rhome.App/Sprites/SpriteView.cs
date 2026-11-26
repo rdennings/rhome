@@ -13,8 +13,11 @@ namespace Rhome.App.Sprites;
 /// </summary>
 public sealed class SpriteView : Control
 {
-    /// <summary>How many sprite pixels fill the view: about the height of a mid-sized Pokémon such as Pikachu or Eevee.</summary>
-    public const double Reference = 56;
+    /// <summary>
+    /// How many sprite pixels fill the view: a little more than a mid-sized Pokémon such as Pikachu or Eevee, so those
+    /// nearly fill a box slot and bigger ones are shrunk to fit.
+    /// </summary>
+    public const double Reference = 44;
 
     Bitmap? bitmap;
     PixelRect content;

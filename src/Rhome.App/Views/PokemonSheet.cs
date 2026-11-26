@@ -19,14 +19,14 @@ public sealed class PokemonSheet : Border
     readonly TextBlock title = new() { FontSize = 22, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly TextBlock subtitle = new() { FontSize = 15, Opacity = 0.85 };
     readonly TextBlock where = new() { FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
-    readonly TextBlock note = new() { FontSize = 12, FontStyle = FontStyle.Italic, Foreground = Brushes.DarkOrange, TextWrapping = TextWrapping.Wrap };
+    readonly TextBlock note = new() { FontSize = 12, FontStyle = FontStyle.Italic, Foreground = Palette.Amber, TextWrapping = TextWrapping.Wrap };
     readonly SpriteView sprite = new() { Width = 96, Height = 96 };
     readonly StackPanel[] columns = [new() { Spacing = 16 }, new() { Spacing = 16 }, new() { Spacing = 16 }];
 
     public PokemonSheet()
     {
         IsVisible = false;
-        Background = new SolidColorBrush(Colors.Black, 0.5);
+        Background = Palette.Scrim;
 
         var close = new Button { Content = "Close", VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, 0, 0, 0) };
         close.Click += (_, _) => Hide();
@@ -53,9 +53,9 @@ public sealed class PokemonSheet : Border
             MaxWidth = 1100,
             Margin = new Thickness(16),
             Padding = new Thickness(20),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = new CornerRadius(14),
             BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Colors.Gray, 0.5), // so it stands out from the dimmed screen in the dark theme
+            BorderBrush = Palette.CardBorder,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new DockPanel { Children = { header, new ScrollViewer { Content = body } } },

@@ -5,11 +5,17 @@ using Avalonia.Interactivity;
 
 namespace Rhome.App.Views;
 
-/// <summary>The app's one window: first-run setup until it has been done once, then My saves and the opened save.</summary>
+/// <summary>
+/// The app's one window: first-run setup until it has been done once, then My saves and the opened save. On a
+/// two-screen device (issue #49) each screen also gets the bottom screen: the split view and the bank put the picked-up
+/// Pokémon, the pending list and Save there; elsewhere it shows the log.
+/// </summary>
 public partial class MainView : UserControl
 {
     readonly MySaves? saves;
     readonly PendingChanges? pending;
+    readonly BottomLog bottomLog = new();
+    readonly ISecondScreen? second;
     SavesView? savesView;
     IActivatableLifetime? lifetime;
     TopLevel? topLevel;
@@ -31,6 +37,16 @@ public partial class MainView : UserControl
         pending = new PendingChanges(platform.Storage);
         if (saves.LoadProblem is { } savesProblem)
             AppLog.Write(savesProblem);
+        second = platform.SecondScreen;
+        if (second is not null)
+        {
+            AppLog.Write(second.IsPresent ? "second screen: found, using it" : "second screen: none");
+            second.PresenceChanged += () =>
+            {
+                AppLog.Write(second.IsPresent ? "second screen: connected" : "second screen: gone");
+                Arrange();
+            };
+        }
 
         if (setup.State.Done)
             ShowSaves();
@@ -97,11 +113,28 @@ public partial class MainView : UserControl
         }
     }
 
+    void Present(Control screen)
+    {
+        Screen.Content = screen;
+        Arrange();
+    }
+
+    /// <summary>Lays the screen out for one screen or two, and puts its part (or the log) on the bottom screen.</summary>
+    void Arrange()
+    {
+        if (second is null)
+            return;
+        var dual = second.IsPresent;
+        var screen = Screen.Content as IDualScreen;
+        screen?.SetDual(dual);
+        second.Show(dual ? screen?.Bottom ?? bottomLog : null);
+    }
+
     void ShowSetup()
     {
         var view = new SetupView(saves!);
         view.Finished += ShowSaves;
-        Screen.Content = view;
+        Present(view);
     }
 
     void ShowSaves()
@@ -113,14 +146,14 @@ public partial class MainView : UserControl
             savesView.Opened += ShowSave;
             savesView.OpenBank += ShowBank;
         }
-        Screen.Content = savesView; // checks the saves again each time it's shown
+        Present(savesView); // checks the saves again each time it's shown
     }
 
     void ShowBank()
     {
         var view = new BankView(pending!);
         view.Back += ShowSaves;
-        Screen.Content = view;
+        Present(view);
     }
 
     /// <summary>Opens the split view for a save, unless it can't take part in transfers; My saves then says why.</summary>
@@ -140,7 +173,7 @@ public partial class MainView : UserControl
         }
         var view = new TransferView(pending, saveId, opened);
         view.Back += ShowSaves;
-        Screen.Content = view;
+        Present(view);
     }
 }
 

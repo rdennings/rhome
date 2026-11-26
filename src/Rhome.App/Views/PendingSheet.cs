@@ -19,7 +19,7 @@ public sealed class PendingSheet : Border
     readonly string logPrefix;
     readonly TextBlock title = new() { FontSize = 20, FontWeight = FontWeight.SemiBold };
     readonly TextBlock intro = new() { TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
-    readonly TextBlock problem = new() { TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DarkOrange, IsVisible = false };
+    readonly TextBlock problem = new() { TextWrapping = TextWrapping.Wrap, Foreground = Palette.Amber, IsVisible = false };
     readonly StackPanel list = new() { Spacing = 8 };
     readonly Button save = new() { Classes = { "accent" }, Margin = new Thickness(0, 0, 8, 8) };
     readonly Button discard = new() { Margin = new Thickness(0, 0, 8, 8) };
@@ -32,7 +32,7 @@ public sealed class PendingSheet : Border
         this.pending = pending;
         this.logPrefix = logPrefix;
         IsVisible = false;
-        Background = new SolidColorBrush(Colors.Black, 0.5);
+        Background = Palette.Scrim;
 
         save.Click += (_, _) => SaveAll();
         discard.Click += (_, _) =>
@@ -51,9 +51,9 @@ public sealed class PendingSheet : Border
             MaxWidth = 760,
             Margin = new Thickness(16),
             Padding = new Thickness(20),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = new CornerRadius(14),
             BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Colors.Gray, 0.5), // so it stands out from the dimmed screen in the dark theme
+            BorderBrush = Palette.CardBorder,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new DockPanel
@@ -95,15 +95,6 @@ public sealed class PendingSheet : Border
         IsVisible = false;
         Problem(null);
     }
-
-    /// <summary>The compact list for the side panel: one line per change and its notes.</summary>
-    public static string Summary(PendingChanges pending) =>
-        pending.IsEmpty
-            ? "Nothing yet. Changes show here and only happen when you tap Save."
-            : string.Join("\n", pending.Outcomes.SelectMany((o, i) =>
-                new[] { $"{i + 1}. {o.Description}" }
-                    .Concat(o.Notes.Select(n => "    " + n.Message))
-                    .Concat(o.Movesets is null ? [] : ["    Two movesets to choose from: see Review."])));
 
     void SaveAll()
     {
@@ -186,7 +177,7 @@ public sealed class PendingSheet : Border
         if (outcome.Kept is { } kept)
             body.Children.Add(Line(kept, opacity: 0.7, italic: true));
         else if (outcome.Notes.Count > 0)
-            body.Children.Add(Line("This isn't kept anywhere else.", foreground: Brushes.DarkOrange));
+            body.Children.Add(Line("This isn't kept anywhere else.", foreground: Palette.Amber));
         foreach (var line in outcome.Bookkeeping)
             body.Children.Add(Line($"• {line}", opacity: 0.7));
         if (outcome.Movesets is { LastInThisGame: { } last } options && outcome.Change is WithdrawChange withdraw)

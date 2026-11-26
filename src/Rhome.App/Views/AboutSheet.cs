@@ -23,7 +23,7 @@ public sealed class AboutSheet : Border
     public AboutSheet()
     {
         IsVisible = false;
-        Background = new SolidColorBrush(Colors.Black, 0.5);
+        Background = Palette.Scrim;
 
         var close = new Button { Content = "Close", VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, 0, 0, 0) };
         close.Click += (_, _) => Hide();
@@ -53,9 +53,9 @@ public sealed class AboutSheet : Border
             MaxWidth = 720,
             Margin = new Thickness(16),
             Padding = new Thickness(20),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = new CornerRadius(14),
             BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Colors.Gray, 0.5),
+            BorderBrush = Palette.CardBorder,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new ScrollViewer { Content = body },

@@ -5,8 +5,10 @@
     <!-- First-run setup (issue #42, PLAN.md §2 "Loading saves"): find emulators, give access, first scan. -->
     <UserControl.Styles>
         <Style Selector="Border.step">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource RhomeCard}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource RhomeCardBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
             <Setter Property="Padding" Value="16" />
         </Style>
         <Style Selector="TextBlock.title">
@@ -14,12 +16,12 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style Selector="TextBlock.hint">
-            <Setter Property="Opacity" Value="0.75" />
+            <Setter Property="Foreground" Value="{DynamicResource RhomeMuted}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="3*,16,2*" Margin="16">
+    <Grid x:Name="Columns" ColumnDefinitions="3*,16,2*" Margin="16">
         <ScrollViewer Grid.Column="0">
             <StackPanel Spacing="12">
                 <TextBlock Text="Set up rhome" FontSize="24" FontWeight="SemiBold" />
@@ -59,9 +61,12 @@
             </StackPanel>
         </ScrollViewer>
 
-        <DockPanel Grid.Column="2">
-            <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
-            <views:LogView />
-        </DockPanel>
+        <!-- On a two-screen device the log goes to the bottom screen (#49) -->
+        <Border x:Name="LogCard" Grid.Column="2" Classes="card" Padding="12">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="label" Text="LOG" Margin="0,0,0,8" />
+                <views:LogView />
+            </DockPanel>
+        </Border>
     </Grid>
 </UserControl>

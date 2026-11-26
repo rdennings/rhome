@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Rhome.App.Views.MainView">
+             x:Class="Rhome.App.Views.MainView"
+             Background="{DynamicResource RhomeBackground}">
     <!-- Shows first-run setup until it's done, then the saves. -->
     <ContentControl x:Name="Screen" />
 </UserControl>

@@ -16,13 +16,17 @@ namespace Rhome.App.Views;
 /// then where it goes, or drag it there. Each move is staged in <see cref="PendingChanges"/>, so the core's checks
 /// (generation lock, structural check, a full party) refuse a move straight away and say why. Nothing is written until
 /// Save, in the pending-changes sheet (issue #46). A Pokémon is only ever on one side: an import empties the game's
-/// slot, a withdraw leaves a placeholder. Details opens the picked-up Pokémon's detail view (issue #47), on either side.
+/// slot, a withdraw leaves a placeholder. Laid out as mockup A (issue #49): the picked-up Pokémon's card beside the
+/// grids opens its detail view (issue #47), and the pending list says where each Pokémon goes; slots a Pokémon arrives
+/// in or leaves are outlined until Save.
 /// </summary>
-public partial class TransferView : UserControl, IGoesBack
+public partial class TransferView : UserControl, IGoesBack, IDualScreen
 {
     readonly PendingChanges? pending;
     readonly PendingSheet? sheet;
     readonly PokemonSheet details = new();
+    readonly BottomPanel bottom = new();
+    bool dual;
     readonly Guid saveId;
     int saveBox = 1;
     int bankBox = 1;
@@ -49,10 +53,16 @@ public partial class TransferView : UserControl, IGoesBack
         SaveNext.Click += (_, _) => { saveBox++; Redraw(); };
         BankPrev.Click += (_, _) => { bankBox--; Redraw(); };
         BankNext.Click += (_, _) => { bankBox++; Redraw(); };
-        UndoButton.Click += (_, _) => { Problem(pending!.Undo(pending.Outcomes.Count - 1, DateTimeOffset.Now)); picked = null; asking = null; Redraw(); };
-        DiscardButton.Click += (_, _) => { pending!.Discard(); AppLog.Write("discarded the pending changes"); Settle(); };
+        UndoButton.Click += (_, _) => UndoLast();
         SaveButton.Click += (_, _) => sheet?.Show(leaving: false);
-        DetailsButton.Click += (_, _) => ShowDetails();
+        Selected.Click += (_, _) => ShowDetails();
+        Selected.Hint = bottom.Selected.Hint = "Tap a Pokémon to pick it up. Its moves and where it's from show here; tap this card for everything.";
+
+        // The bottom screen's panel, on a two-screen device (issue #49)
+        bottom.Selected.Click += (_, _) => ShowDetails();
+        bottom.Save.Click += (_, _) => sheet?.Show(leaving: false);
+        bottom.Undo.Click += (_, _) => UndoLast();
+        bottom.Discard.Click += (_, _) => { pending!.Discard(); AppLog.Write("discarded the pending changes"); Settle(); };
 
         // Drag: press on a Pokémon, let go over another slot. A press and release on one slot is a tap (Click).
         AddHandler(PointerPressedEvent, (_, e) => dragFrom = PlaceOf(e.Source as Visual) is { } p && HasPokemon(p) ? p : null,
@@ -72,8 +82,33 @@ public partial class TransferView : UserControl, IGoesBack
         Game = opened.Game;
         TitleText.Text = $"{SaveText.Title(opened.Game)} ↔ Bank";
         CopiesText.Text = opened.Game.HasSeveralCopies
-            ? string.Join("\n", opened.Game.Copies.Select(c => SaveText.Copy(opened.Game, c)))
+            ? string.Join(" · ", opened.Game.Copies.Select(c => SaveText.Copy(opened.Game, c)))
             : SaveText.Copy(opened.Game, opened.Game.Loaded);
+        GameLabel.Text = $"{EnglishNames.Game(SaveDetector.GameOf(Save)).ToUpperInvariant()} · PARTY";
+        Redraw();
+    }
+
+    public Control Bottom => bottom;
+
+    /// <summary>
+    /// With a second screen, the picked-up Pokémon, the pending list and Save go to the bottom screen, and the top
+    /// screen is the two box grids (mockup A, dual).
+    /// </summary>
+    public void SetDual(bool dual)
+    {
+        this.dual = dual;
+        Aside.IsVisible = !dual;
+        Columns.ColumnDefinitions[3].Width = new GridLength(dual ? 0 : 10);
+        Columns.ColumnDefinitions[4].Width = new GridLength(dual ? 0 : 210);
+        UndoButton.IsVisible = SaveButton.IsVisible = !dual;
+        Redraw();
+    }
+
+    void UndoLast()
+    {
+        Problem(pending!.Undo(pending.Outcomes.Count - 1, DateTimeOffset.Now));
+        picked = null;
+        asking = null;
         Redraw();
     }
 
@@ -211,50 +246,69 @@ public partial class TransferView : UserControl, IGoesBack
             return;
         var save = Save;
         var bank = pending.Bank;
+        var (arriving, leaving) = PendingView.InSave(pending, saveId);
+        var arrivingInBank = PendingView.ArrivingInBank(pending);
 
         saveBox = Math.Clamp(saveBox, 1, save.BoxCount);
-        SaveBoxTitle.Text = $"{SaveContents.BoxName(save, saveBox)} ({saveBox}/{save.BoxCount})";
+        SaveBoxTitle.Text = SaveContents.BoxName(save, saveBox);
         SavePrev.IsEnabled = saveBox > 1;
         SaveNext.IsEnabled = saveBox < save.BoxCount;
 
         var boxes = bank.Boxes.Boxes;
         bankBox = Math.Clamp(bankBox, 1, boxes.Count);
         var box = boxes[bankBox - 1];
-        BankBoxTitle.Text = $"Bank · {box.Name} ({bankBox}/{boxes.Count})";
+        BankBoxTitle.Text = box.Name;
+        BankBoxCount.Text = $"{bankBox} of {boxes.Count}";
         BankPrev.IsEnabled = bankBox > 1;
         BankNext.IsEnabled = bankBox < boxes.Count;
 
         PartyGrid.Children.Clear();
         for (var i = 1; i <= 6; i++)
-        {
-            var slot = new SaveSlot(null, i);
-            PartyGrid.Children.Add(SlotButton(new InSave(slot), InSlot(slot) is { } pk ? (Label(pk), Detail(pk), 1, SpriteRequest.Of(pk)) : null));
-        }
+            PartyGrid.Children.Add(SaveSlotButton(new SaveSlot(null, i), arriving, leaving));
         SaveGrid.Children.Clear();
+        var filled = 0;
         for (var i = 1; i <= save.BoxSlotCount; i++)
         {
             var slot = new SaveSlot(saveBox, i);
-            SaveGrid.Children.Add(SlotButton(new InSave(slot), InSlot(slot) is { } pk ? (Label(pk), Detail(pk), 1, SpriteRequest.Of(pk)) : null));
+            filled += InSlot(slot) is null ? 0 : 1;
+            SaveGrid.Children.Add(SaveSlotButton(slot, arriving, leaving));
         }
+        SaveBoxCount.Text = $"{filled} / {save.BoxSlotCount}";
         BankGrid.Children.Clear();
         for (var i = 1; i <= BankBox.SlotCount; i++)
         {
             var slot = new BankSlot(box.Id, i);
-            BankGrid.Children.Add(SlotButton(new InBank(slot), bank.At(slot) is { } p ? BankText(p) : null));
+            var pokemon = bank.At(slot);
+            var state = pokemon is { IsInBank: false } ? SlotState.Away : arrivingInBank.Contains(slot) ? SlotState.Arriving : SlotState.Normal;
+            BankGrid.Children.Add(SlotButton(new InBank(slot), pokemon is null ? null : BankFace(pokemon), state));
         }
 
         HintText.Text = picked is null
             ? "Tap a Pokémon, then tap where it goes, or drag it there. Nothing is written until Save."
-            : $"Holding {PickedName()}: now tap where it goes (another box: use the arrows), or tap it again to put it down.";
-        DetailsButton.IsVisible = picked is not null;
+            : $"Holding {PickedName()}. Tap where it goes (another box: use the arrows), or tap it again to put it down.";
+        var shown = PickedDetails();
+        Selected.Show(shown);
+        bottom.Selected.Show(shown);
 
         ChoicePanel.Children.Clear();
-        ChoicePanel.IsVisible = asking is not null;
+        ChoiceCard.IsVisible = asking is not null;
         if (asking is not null)
             ShowChoice();
 
-        PendingText.Text = PendingSheet.Summary(pending);
-        SaveButton.IsEnabled = UndoButton.IsEnabled = DiscardButton.IsEnabled = !pending.IsEmpty;
+        var lines = PendingView.Lines(pending);
+        PendingLabel.Text = lines.Count == 0 ? "PENDING" : $"PENDING · {lines.Count}";
+        PendingList.Fill(PendingPanel, lines, "Nothing yet. Moves show here and only happen when you save.");
+        bottom.ShowPending(lines, "Nothing yet. Moves show here and only happen when you save.");
+        PendingPill.IsVisible = !dual && lines.Count > 0;
+        PendingCount.Text = $"{lines.Count} pending";
+        SaveButton.IsEnabled = UndoButton.IsEnabled = !pending.IsEmpty;
+    }
+
+    Button SaveSlotButton(SaveSlot slot, IReadOnlySet<SaveSlot> arriving, IReadOnlySet<SaveSlot> leaving)
+    {
+        var pk = InSlot(slot);
+        var state = arriving.Contains(slot) ? SlotState.Arriving : pk is null && leaving.Contains(slot) ? SlotState.Leaving : SlotState.Normal;
+        return SlotButton(new InSave(slot), pk is null ? null : SlotFace.For(SpriteRequest.Of(pk), Label(pk), Detail(pk), 10), state);
     }
 
     /// <summary>An import that might be a Pokémon the bank knows: which one is it, or is it a new one?</summary>
@@ -284,21 +338,21 @@ public partial class TransferView : UserControl, IGoesBack
 
     void ShowDetails()
     {
-        var shown = picked switch
-        {
-            InSave s => PokemonDetails.ForSave(pending!.Bank, Save, saveId, s.Slot, pending.SaveName(saveId), pending.SaveName),
-            InBank b when pending!.Bank.At(b.Slot) is { } pokemon => PokemonDetails.ForBank(pending.Bank, pokemon, pending.SaveName),
-            _ => null,
-        };
-        if (shown is not null)
+        if (PickedDetails() is { } shown)
             details.Show(shown);
     }
 
-    static (string Name, string Detail, double Opacity, SpriteRequest Sprite) BankText(BankPokemon pokemon)
+    PokemonDetails? PickedDetails() => picked switch
+    {
+        InSave s when InSlot(s.Slot) is not null => PokemonDetails.ForSave(pending!.Bank, Save, saveId, s.Slot, pending.SaveName(saveId), pending.SaveName),
+        InBank b when pending!.Bank.At(b.Slot) is { } pokemon => PokemonDetails.ForBank(pending.Bank, pokemon, pending.SaveName),
+        _ => null,
+    };
+
+    static Control BankFace(BankPokemon pokemon)
     {
         var sprite = SpriteRequest.Of(pokemon);
-        return (BankLabel(pokemon), SlotFace.Line(sprite.IsEgg, pokemon.Summary.Level, pokemon.Summary.Gender),
-            pokemon.IsInBank ? 1 : 0.6, sprite);
+        return SlotFace.For(sprite, BankLabel(pokemon), SlotFace.Line(sprite.IsEgg, pokemon.Summary.Level, pokemon.Summary.Gender), 10);
     }
 
     /// <summary>The picked-up Pokémon's name, and where it is when it's a bank Pokémon that's out in a game.</summary>
@@ -311,23 +365,11 @@ public partial class TransferView : UserControl, IGoesBack
         _ => "a Pokémon",
     };
 
-    Button SlotButton(Place place, (string Name, string Detail, double Opacity, SpriteRequest Sprite)? pokemon)
+    Button SlotButton(Place place, Control? face, SlotState state)
     {
-        var button = new Button
-        {
-            Content = pokemon is { } p ? SlotFace.For(p.Sprite, p.Name, p.Detail, 12) : null,
-            Tag = place,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            VerticalContentAlignment = VerticalAlignment.Stretch,
-            Padding = new Thickness(2),
-            Margin = new Thickness(2),
-            Opacity = pokemon?.Opacity ?? 1,
-            IsEnabled = pending!.LoadProblem is null,
-        };
-        if (place == picked)
-            button.Classes.Add("accent");
+        var button = SlotFace.Button(face, place == picked ? SlotState.Picked : state);
+        button.Tag = place;
+        button.IsEnabled = pending!.LoadProblem is null;
         button.Click += (_, _) => Tap(place);
         return button;
     }
