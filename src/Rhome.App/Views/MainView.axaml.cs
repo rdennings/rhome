@@ -81,7 +81,8 @@ public partial class MainView : UserControl
 
     /// <summary>
     /// The system back button (Android) does what the screen's own back button does, so leaving a save with unsaved
-    /// changes asks first. On My saves it isn't handled, and the system leaves the app as usual.
+    /// changes asks first. On My saves it closes About if it's open; otherwise it isn't handled, and the system leaves
+    /// the app as usual.
     /// </summary>
     void OnBackRequested(object? sender, RoutedEventArgs e)
     {
@@ -89,6 +90,10 @@ public partial class MainView : UserControl
         {
             e.Handled = true;
             screen.GoBack();
+        }
+        else if (Screen.Content is SavesView view && view.CloseSheet())
+        {
+            e.Handled = true;
         }
     }
 

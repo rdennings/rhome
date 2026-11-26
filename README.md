@@ -89,6 +89,8 @@ rhome is a fan project. It is **not affiliated with, endorsed by, or sponsored b
 
 rhome does **not** include or distribute ROMs, BIOS files, or game assets, and never uploads your ROMs. Use it with games you own.
 
+Pokémon sprites aren't in this repo or the app either. rhome loads them the first time it shows them, from a pinned commit of [PokeAPI/sprites](https://github.com/PokeAPI/sprites) through jsDelivr, and keeps them on your device. **Download sprites for my games** under About fetches them all at once for offline use. The images are © The Pokémon Company, Nintendo and Game Freak. Thanks to the PokeAPI contributors who collected them. `src/Rhome.App/Sprites/sprites.json` says which file shows each Pokémon; it holds numbers and file names only, and `tools/Rhome.SpriteTable` writes it (its header says how to bump the commit).
+
 Writing data into a save always carries risk. rhome is built for emulators; importing data into games on official hardware is not recommended, and the authors are not responsible for lost or corrupted saves or any action taken against your account.
 
 ## License

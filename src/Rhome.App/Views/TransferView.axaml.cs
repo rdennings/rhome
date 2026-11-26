@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using PKHeX.Core;
+using Rhome.App.Sprites;
 using Rhome.Core;
 
 namespace Rhome.App.Views;
@@ -227,13 +228,13 @@ public partial class TransferView : UserControl, IGoesBack
         for (var i = 1; i <= 6; i++)
         {
             var slot = new SaveSlot(null, i);
-            PartyGrid.Children.Add(SlotButton(new InSave(slot), InSlot(slot) is { } pk ? (Label(pk), Detail(pk), 1) : null));
+            PartyGrid.Children.Add(SlotButton(new InSave(slot), InSlot(slot) is { } pk ? (Label(pk), Detail(pk), 1, SpriteRequest.Of(pk)) : null));
         }
         SaveGrid.Children.Clear();
         for (var i = 1; i <= save.BoxSlotCount; i++)
         {
             var slot = new SaveSlot(saveBox, i);
-            SaveGrid.Children.Add(SlotButton(new InSave(slot), InSlot(slot) is { } pk ? (Label(pk), Detail(pk), 1) : null));
+            SaveGrid.Children.Add(SlotButton(new InSave(slot), InSlot(slot) is { } pk ? (Label(pk), Detail(pk), 1, SpriteRequest.Of(pk)) : null));
         }
         BankGrid.Children.Clear();
         for (var i = 1; i <= BankBox.SlotCount; i++)
@@ -244,7 +245,7 @@ public partial class TransferView : UserControl, IGoesBack
 
         HintText.Text = picked is null
             ? "Tap a Pokémon, then tap where it goes, or drag it there. Nothing is written until Save."
-            : "Now tap where it goes (another box: use the arrows), or tap it again to put it down.";
+            : $"Holding {PickedName()}: now tap where it goes (another box: use the arrows), or tap it again to put it down.";
         DetailsButton.IsVisible = picked is not null;
 
         ChoicePanel.Children.Clear();
@@ -293,30 +294,33 @@ public partial class TransferView : UserControl, IGoesBack
             details.Show(shown);
     }
 
-    (string Name, string Detail, double Opacity) BankText(BankPokemon pokemon)
+    static (string Name, string Detail, double Opacity, SpriteRequest Sprite) BankText(BankPokemon pokemon)
     {
-        var detail = pokemon.CheckedOut is { } away
-            ? $"out in {pending!.SaveName(away.SaveId)}"
-            : $"Lv{pokemon.Summary.Level}{(pokemon.Summary.IsShiny ? " ★" : "")}";
-        return (BankLabel(pokemon), detail, pokemon.IsInBank ? 1 : 0.6);
+        var sprite = SpriteRequest.Of(pokemon);
+        return (BankLabel(pokemon), SlotFace.Line(sprite.IsEgg, pokemon.Summary.Level, pokemon.Summary.Gender),
+            pokemon.IsInBank ? 1 : 0.6, sprite);
     }
 
-    Button SlotButton(Place place, (string Name, string Detail, double Opacity)? pokemon)
+    /// <summary>The picked-up Pokémon's name, and where it is when it's a bank Pokémon that's out in a game.</summary>
+    string PickedName() => picked switch
     {
-        var text = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        if (pokemon is { } p)
-        {
-            text.Children.Add(new TextBlock { Text = p.Name, FontWeight = FontWeight.SemiBold, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Center });
-            text.Children.Add(new TextBlock { Text = p.Detail, FontSize = 10, Opacity = 0.7, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Center });
-        }
+        InSave s when InSlot(s.Slot) is { } pk => Label(pk),
+        InBank b when pending!.Bank.At(b.Slot) is { } pokemon => pokemon.CheckedOut is { } away
+            ? $"{BankLabel(pokemon)} (out in {pending.SaveName(away.SaveId)})"
+            : BankLabel(pokemon),
+        _ => "a Pokémon",
+    };
+
+    Button SlotButton(Place place, (string Name, string Detail, double Opacity, SpriteRequest Sprite)? pokemon)
+    {
         var button = new Button
         {
-            Content = text,
+            Content = pokemon is { } p ? SlotFace.For(p.Sprite, p.Name, p.Detail, 12) : null,
             Tag = place,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
             Padding = new Thickness(2),
             Margin = new Thickness(2),
             Opacity = pokemon?.Opacity ?? 1,
@@ -330,7 +334,7 @@ public partial class TransferView : UserControl, IGoesBack
 
     static string Label(PKM pk) => pk.IsEgg ? "Egg" : pk.IsNicknamed ? pk.Nickname : EnglishNames.Species(pk.Species);
 
-    static string Detail(PKM pk) => pk.IsEgg ? "" : $"Lv{pk.CurrentLevel}{(pk.IsShiny ? " ★" : "")}";
+    static string Detail(PKM pk) => SlotFace.Line(pk.IsEgg, pk.CurrentLevel, pk.Gender);
 
     static string BankLabel(BankPokemon pokemon) =>
         pokemon.Summary.IsNicknamed ? pokemon.Summary.Nickname : EnglishNames.Species(pokemon.Summary.Species);

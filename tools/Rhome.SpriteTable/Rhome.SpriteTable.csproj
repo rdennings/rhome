@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Developer tool: writes src/Rhome.App/Sprites/sprites.json, the species + form → file name table for the sprites
+       loaded at runtime from PokeAPI/sprites (issue #48). Not shipped. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="PKHeX.Core" />
+  </ItemGroup>
+</Project>

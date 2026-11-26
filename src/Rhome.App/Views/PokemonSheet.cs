@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using Rhome.App.Sprites;
 
 namespace Rhome.App.Views;
 
@@ -19,6 +20,7 @@ public sealed class PokemonSheet : Border
     readonly TextBlock subtitle = new() { FontSize = 15, Opacity = 0.85 };
     readonly TextBlock where = new() { FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
     readonly TextBlock note = new() { FontSize = 12, FontStyle = FontStyle.Italic, Foreground = Brushes.DarkOrange, TextWrapping = TextWrapping.Wrap };
+    readonly SpriteView sprite = new() { Width = 96, Height = 96 };
     readonly StackPanel[] columns = [new() { Spacing = 16 }, new() { Spacing = 16 }, new() { Spacing = 16 }];
 
     public PokemonSheet()
@@ -32,6 +34,10 @@ public sealed class PokemonSheet : Border
 
         var header = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
         header.Children.Add(close);
+        sprite.Margin = new Thickness(0, 0, 12, 0);
+        sprite.VerticalAlignment = VerticalAlignment.Top;
+        DockPanel.SetDock(sprite, Dock.Left);
+        header.Children.Add(sprite);
         header.Children.Add(new StackPanel { Children = { title, subtitle, where, note } });
         DockPanel.SetDock(header, Dock.Top);
 
@@ -60,6 +66,7 @@ public sealed class PokemonSheet : Border
 
     public void Show(PokemonDetails details)
     {
+        SpriteImages.Show(sprite, details.Sprite);
         title.Text = details.Title;
         subtitle.Text = details.Subtitle;
         where.Text = details.Where;

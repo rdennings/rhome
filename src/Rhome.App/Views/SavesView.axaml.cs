@@ -12,6 +12,7 @@ namespace Rhome.App.Views;
 public partial class SavesView : UserControl
 {
     readonly MySaves? saves;
+    readonly AboutSheet about = new();
     bool busy;
     string? notice;
 
@@ -30,6 +31,8 @@ public partial class SavesView : UserControl
         ScanButton.Click += (_, _) => _ = Run(ScanAsync);
         SetupButton.Click += (_, _) => SetUpAgain?.Invoke();
         BankButton.Click += (_, _) => OpenBank?.Invoke();
+        AboutButton.Click += (_, _) => about.Show();
+        Root.Children.Add(about);
         SavesList.SelectionChanged += (_, _) =>
         {
             if ((SavesList.SelectedItem as Control)?.Tag is FoundGame game)
@@ -44,6 +47,15 @@ public partial class SavesView : UserControl
     {
         this.saves = saves;
         ShowGames(); // what was known last time, before the check: no I/O
+    }
+
+    /// <summary>Closes About if it's open; false when it wasn't, so the system back button leaves the app as usual.</summary>
+    public bool CloseSheet()
+    {
+        if (!about.IsVisible)
+            return false;
+        about.Hide();
+        return true;
     }
 
     protected override void OnLoaded(RoutedEventArgs e)

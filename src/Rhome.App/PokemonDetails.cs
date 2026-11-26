@@ -1,5 +1,6 @@
 using System.Globalization;
 using PKHeX.Core;
+using Rhome.App.Sprites;
 using Rhome.Core;
 
 namespace Rhome.App;
@@ -41,6 +42,9 @@ public sealed class PokemonDetails
 
     /// <summary>Where it is: a game's slot, or a bank slot (and where it is while it's out).</summary>
     public required string Where { get; init; }
+
+    /// <summary>Its sprite (issue #48).</summary>
+    public required SpriteRequest Sprite { get; init; }
 
     /// <summary>A caveat about the data shown, or null.</summary>
     public string? Note { get; init; }
@@ -115,6 +119,7 @@ public sealed class PokemonDetails
         {
             Title = pk.IsEgg ? "Egg" : pk.IsNicknamed ? pk.Nickname : species,
             Subtitle = SubtitleOf(pk, species),
+            Sprite = SpriteRequest.Of(pk),
             Where = where,
             Note = note,
             Facts = FactsOf(pk),

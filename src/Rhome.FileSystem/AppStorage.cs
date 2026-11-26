@@ -13,6 +13,7 @@ namespace Rhome.FileSystem;
 /// &lt;root&gt;/saves.json              the saves the last scan found, for the launch check
 /// &lt;root&gt;/backups/saves/&lt;id&gt;/     each save as it was before rhome wrote it
 /// &lt;root&gt;/backups/bank/            the bank as it was before each change
+/// &lt;root&gt;/sprites/&lt;commit&gt;/        sprites loaded from PokeAPI/sprites, kept for good (rhome never ships them)
 /// </code>
 /// </remarks>
 public sealed class AppStorage(string root, int keepBackups = 10)
@@ -26,6 +27,8 @@ public sealed class AppStorage(string root, int keepBackups = 10)
     public FileOnDisk SetupFile => new(Path.Combine(Root, "setup.json"));
 
     public FileOnDisk SavesFile => new(Path.Combine(Root, "saves.json"));
+
+    public string SpritesFolder => Path.Combine(Root, "sprites");
 
     public BackupFolder Backups => new(Path.Combine(Root, "backups"), keepBackups);
 }
