@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -6,8 +7,19 @@ using Rhome.Core;
 namespace Rhome.App.Views;
 
 /// <summary>First-run setup (issue #42): find emulators, give access, first scan. Also opened again from the saves.</summary>
-public partial class SetupView : UserControl
+public partial class SetupView : UserControl, IDualScreen
 {
+    /// <summary>Nothing of its own for the bottom screen: the log goes there.</summary>
+    public Control? Bottom => null;
+
+    /// <summary>With a second screen the log is on the bottom screen, so this one gets the whole top screen.</summary>
+    public void SetDual(bool dual)
+    {
+        LogCard.IsVisible = !dual;
+        Columns.ColumnDefinitions[1].Width = new GridLength(dual ? 0 : 16);
+        Columns.ColumnDefinitions[2].Width = dual ? new GridLength(0) : new GridLength(2, GridUnitType.Star);
+    }
+
     readonly MySaves? saves;
     readonly Setup? setup;
     IReadOnlyList<KnownEmulator> found = [];

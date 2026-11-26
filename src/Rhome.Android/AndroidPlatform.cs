@@ -27,6 +27,11 @@ sealed class AndroidPlatform(MainActivity activity) : IAppPlatform
 
     public Platform Os => Platform.Android;
 
+    /// <summary>The Thor's bottom screen, when there is one (issue #49).</summary>
+    public AndroidSecondScreen SecondScreen { get; } = new(activity);
+
+    ISecondScreen? IAppPlatform.SecondScreen => SecondScreen;
+
     /// <summary>
     /// The app-specific folder on shared storage (<c>Android/data/&lt;app&gt;/files</c>). Like internal storage it needs
     /// no permission and goes away with the app, but adb can read it from a non-debuggable build, which is how backups

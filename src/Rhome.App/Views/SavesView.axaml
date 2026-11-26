@@ -5,7 +5,7 @@
     <!-- My saves (#43): the saves the last scan found, checked on every launch. One tap opens a save. -->
     <!-- About (#48: sprite credits and download) goes on top, from code. -->
     <Panel x:Name="Root">
-        <Grid Margin="16" ColumnDefinitions="3*,16,2*" RowDefinitions="Auto,*">
+        <Grid x:Name="Columns" Margin="12" ColumnDefinitions="3*,10,2*" RowDefinitions="Auto,*">
             <DockPanel Grid.ColumnSpan="3" Margin="0,0,0,12">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button x:Name="BankButton" Content="Bank" Classes="accent" />
@@ -20,16 +20,21 @@
             </DockPanel>
 
             <DockPanel Grid.Row="1" Grid.Column="0">
-                <TextBlock x:Name="Notices" DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="DarkOrange" IsVisible="False" Margin="0,0,0,8" />
+                <TextBlock x:Name="Notices" DockPanel.Dock="Top" Classes="problem" IsVisible="False" Margin="0,0,0,8" />
                 <TextBlock x:Name="EmptyText" DockPanel.Dock="Top" TextWrapping="Wrap" IsVisible="False"
                            Text="No Pokémon saves found. Play a little and save in game, then tap Scan now. If a folder is missing, tap Set up again." />
-                <ListBox x:Name="SavesList" />
+                <Border Classes="card" Padding="6">
+                    <ListBox x:Name="SavesList" Background="Transparent" />
+                </Border>
             </DockPanel>
 
-            <DockPanel Grid.Row="1" Grid.Column="2">
-                <TextBlock DockPanel.Dock="Top" Text="Log" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
-                <views:LogView />
-            </DockPanel>
+            <!-- On a two-screen device the log goes to the bottom screen (#49) -->
+            <Border x:Name="LogCard" Grid.Row="1" Grid.Column="2" Classes="card" Padding="12">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="label" Text="LOG" Margin="0,0,0,8" />
+                    <views:LogView />
+                </DockPanel>
+            </Border>
         </Grid>
     </Panel>
 </UserControl>

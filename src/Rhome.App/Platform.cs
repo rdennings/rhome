@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Rhome.Core;
 using Rhome.FileSystem;
 
@@ -39,6 +40,26 @@ public interface IAppPlatform
 
     /// <summary>Gives up access to a folder or file rhome no longer uses.</summary>
     void Release(string id);
+
+    /// <summary>The device's second screen (the Thor's bottom screen, issue #49), or null when the platform has none.</summary>
+    ISecondScreen? SecondScreen => null;
+}
+
+/// <summary>
+/// A second screen rhome can draw on (issue #49): the bottom screen of a two-screen handheld such as the Ayn Thor.
+/// While rhome is in the background the platform takes it down, so an emulator gets the screen back, and puts it back
+/// when rhome returns.
+/// </summary>
+public interface ISecondScreen
+{
+    /// <summary>Whether there's a second screen now. The layout follows this, not whether it's showing this moment.</summary>
+    bool IsPresent { get; }
+
+    /// <summary>A second screen was connected or went away. Raised on the UI thread.</summary>
+    event Action? PresenceChanged;
+
+    /// <summary>Puts <paramref name="content"/> on the second screen, or clears it.</summary>
+    void Show(Control? content);
 }
 
 /// <summary>A folder or file the user picked.</summary>

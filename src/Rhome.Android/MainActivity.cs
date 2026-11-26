@@ -18,10 +18,25 @@ public class MainActivity : AvaloniaMainActivity
     readonly Dictionary<int, TaskCompletionSource<(Result, Intent?)>> _pending = [];
     int _nextRequest = 0x5200;
 
+    AndroidPlatform? platform;
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        Host.Platform = new AndroidPlatform(this);
+        Host.Platform = platform = new AndroidPlatform(this);
         base.OnCreate(savedInstanceState);
+    }
+
+    // The bottom screen is rhome's only while rhome is in front (issue #49): in the background an emulator needs it.
+    protected override void OnStart()
+    {
+        base.OnStart();
+        platform?.SecondScreen.OnStart();
+    }
+
+    protected override void OnStop()
+    {
+        platform?.SecondScreen.OnStop();
+        base.OnStop();
     }
 
     /// <summary>Starts another activity (the folder picker) and waits for its result.</summary>

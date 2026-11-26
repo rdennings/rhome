@@ -1,56 +1,76 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Rhome.App.Views"
              x:Class="Rhome.App.Views.BankView">
-    <!-- The bank's boxes (#44): every change is pending until Save. -->
+    <!-- The bank's boxes (#44), in mockup A's look (#49): every change is pending until Save. -->
     <!-- The pending-changes sheet (#46) and the Pokémon detail view (#47) go on top, from code. -->
     <Panel x:Name="Root">
-        <Grid Margin="16" ColumnDefinitions="1.2*,16,3*,16,1.5*" RowDefinitions="Auto,*">
-            <DockPanel Grid.ColumnSpan="5" Margin="0,0,0,12">
-                <Button x:Name="BackButton" DockPanel.Dock="Left" Content="‹ My saves" VerticalAlignment="Center" Margin="0,0,12,0" />
-                <TextBlock x:Name="ProblemText" DockPanel.Dock="Right" Foreground="DarkOrange" TextWrapping="Wrap" MaxWidth="600"
-                           VerticalAlignment="Center" IsVisible="False" />
-                <TextBlock Text="Bank" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <DockPanel Margin="12">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <Button x:Name="BackButton" DockPanel.Dock="Left" Margin="0,0,10,0" Padding="8,0,14,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Path Classes="icon" Data="M15 18l-6-6 6-6" />
+                        <TextBlock Text="My saves" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="SaveButton" DockPanel.Dock="Right" Classes="accent" Content="Review and save" Margin="8,0,0,0" />
+                <Button x:Name="UndoButton" DockPanel.Dock="Right" Classes="icon" Margin="8,0,0,0"
+                        ToolTip.Tip="Undo last change" AutomationProperties.Name="Undo last change">
+                    <Path Classes="icon" Data="M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3" />
+                </Button>
+                <Border x:Name="PendingPill" DockPanel.Dock="Right" Classes="pill" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <TextBlock x:Name="PendingCount" />
+                </Border>
+                <TextBlock Text="Bank" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
             </DockPanel>
+            <TextBlock x:Name="ProblemText" DockPanel.Dock="Top" Classes="problem" IsVisible="False" Margin="0,0,0,8" />
 
-            <!-- Boxes, in order -->
-            <DockPanel Grid.Row="1" Grid.Column="0">
-                <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
-                    <TextBox x:Name="NameBox" PlaceholderText="Box name" MaxLength="30" />
-                    <WrapPanel>
-                        <Button x:Name="AddButton" Content="New box" Margin="0,0,8,8" />
-                        <Button x:Name="RenameButton" Content="Rename" Margin="0,0,8,8" />
-                    </WrapPanel>
-                    <WrapPanel>
-                        <Button x:Name="UpButton" Content="Move up" Margin="0,0,8,8" />
-                        <Button x:Name="DownButton" Content="Move down" Margin="0,0,8,8" />
-                        <Button x:Name="DeleteButton" Content="Delete" Margin="0,0,8,8" />
-                    </WrapPanel>
-                </StackPanel>
-                <ListBox x:Name="BoxList" />
-            </DockPanel>
+            <!-- On a two-screen device the last column goes to the bottom screen (#49): see SetDual. -->
+            <Grid x:Name="Columns" ColumnDefinitions="1.25*,10,2.2*,10,210">
+                <!-- Boxes, in order -->
+                <Border Grid.Column="0" Classes="card">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Classes="label" Text="BOXES" Margin="0,0,0,6" />
+                        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+                            <TextBox x:Name="NameBox" PlaceholderText="Box name" MaxLength="30" />
+                            <UniformGrid Columns="2">
+                                <Button x:Name="AddButton" Padding="6,0" FontSize="13" Content="New box" HorizontalAlignment="Stretch" Margin="0,0,3,6" />
+                                <Button x:Name="RenameButton" Padding="6,0" FontSize="13" Content="Rename" HorizontalAlignment="Stretch" Margin="3,0,0,6" />
+                                <Button x:Name="UpButton" Padding="6,0" FontSize="13" Content="Move up" HorizontalAlignment="Stretch" Margin="0,0,3,6" />
+                                <Button x:Name="DownButton" Padding="6,0" FontSize="13" Content="Move down" HorizontalAlignment="Stretch" Margin="3,0,0,6" />
+                            </UniformGrid>
+                            <Button x:Name="DeleteButton" Content="Delete box" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <ListBox x:Name="BoxList" Background="Transparent" />
+                    </DockPanel>
+                </Border>
 
-            <!-- The open box -->
-            <DockPanel Grid.Row="1" Grid.Column="2">
-                <TextBlock x:Name="BoxTitle" DockPanel.Dock="Top" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4" />
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <Button x:Name="DetailsButton" DockPanel.Dock="Right" Content="Details" IsVisible="False" VerticalAlignment="Center" Margin="8,0,0,0" />
-                    <TextBlock x:Name="HintText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <!-- The open box -->
+                <Border Grid.Column="2" Classes="card">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Classes="label" Text="BOX" />
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
+                            <TextBlock x:Name="BoxTitle" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock x:Name="BoxCount" FontSize="11" Classes="muted" VerticalAlignment="Bottom" />
+                        </StackPanel>
+                        <TextBlock x:Name="HintText" DockPanel.Dock="Top" FontSize="12" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6" />
+                        <UniformGrid x:Name="SlotGrid" Columns="6" Rows="5" Margin="-2.5,0" />
+                    </DockPanel>
+                </Border>
+
+                <!-- The picked-up Pokémon, and the pending list -->
+                <DockPanel x:Name="Aside" Grid.Column="4">
+                    <views:SelectedCard x:Name="Selected" DockPanel.Dock="Top" Margin="0,0,0,10" />
+                    <Border Classes="card" Padding="12">
+                        <DockPanel>
+                            <TextBlock x:Name="PendingLabel" DockPanel.Dock="Top" Classes="label" Margin="0,0,0,8" />
+                            <ScrollViewer>
+                                <StackPanel x:Name="PendingPanel" />
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
                 </DockPanel>
-                <UniformGrid x:Name="SlotGrid" Columns="6" Rows="5" />
-            </DockPanel>
-
-            <!-- Pending changes -->
-            <DockPanel Grid.Row="1" Grid.Column="4">
-                <TextBlock DockPanel.Dock="Top" Text="Pending changes" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
-                <WrapPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-                    <Button x:Name="SaveButton" Content="Review and save" Classes="accent" Margin="0,0,8,8" />
-                    <Button x:Name="UndoButton" Content="Undo last" Margin="0,0,8,8" />
-                    <Button x:Name="DiscardButton" Content="Discard all" Margin="0,0,8,8" />
-                </WrapPanel>
-                <ScrollViewer>
-                    <TextBlock x:Name="PendingText" TextWrapping="Wrap" />
-                </ScrollViewer>
-            </DockPanel>
-        </Grid>
+            </Grid>
+        </DockPanel>
     </Panel>
 </UserControl>
