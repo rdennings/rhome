@@ -92,8 +92,15 @@ jobs:
           apk="rhome-${{ steps.version.outputs.name }}.apk"
           cp src/Rhome.Android/bin/Release/net10.0-android/publish/io.github.rdennings.rhome-Signed.apk "$apk"
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
-          cert=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-          echo "Signed by $cert"
+          # The wording changes between build-tools versions ("Signer #1 certificate SHA-256 digest: …" up to 36,
+          # "V3.0 Signer: certificate SHA-256 digest: …" in 37), so match only the end of the line.
+          certs=$("$apksigner" verify --print-certs "$apk")
+          echo "$certs"
+          cert=$(echo "$certs" | sed -n 's/^.*certificate SHA-256 digest: \([0-9a-f]\{64\}\)$/\1/p' | head -n 1)
+          if [ -z "$cert" ]; then
+            echo "::error::Couldn't read the signing certificate from apksigner's output"
+            exit 1
+          fi
           if [ -n "$EXPECTED" ] && [ "$cert" != "$EXPECTED" ]; then
             echo "::error::The APK is signed by $cert, not the release key $EXPECTED"
             exit 1
