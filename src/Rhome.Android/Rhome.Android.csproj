@@ -14,6 +14,17 @@
     <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
   </PropertyGroup>
+  <!-- Release signing (#84). With the RHOME_KEYSTORE environment variable (or property) set to the release keystore,
+       the APK is signed with rhome's release key, so it installs over a GitHub release and the bank survives. The
+       password is read from the RHOME_KEYSTORE_PASSWORD environment variable, never from the command line, so it
+       stays out of logs. Without RHOME_KEYSTORE the build is signed with this machine's debug key, as before. -->
+  <PropertyGroup Condition="'$(RHOME_KEYSTORE)' != ''">
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>$(RHOME_KEYSTORE)</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias>rhome</AndroidSigningKeyAlias>
+    <AndroidSigningStorePass>env:RHOME_KEYSTORE_PASSWORD</AndroidSigningStorePass>
+    <AndroidSigningKeyPass>env:RHOME_KEYSTORE_PASSWORD</AndroidSigningKeyPass>
+  </PropertyGroup>
   <ItemGroup>
     <AndroidResource Include="Icon.png">
       <Link>Resources\drawable\Icon.png</Link>

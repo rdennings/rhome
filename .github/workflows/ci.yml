@@ -71,7 +71,7 @@ jobs:
 
       # No keystore is given, so the APK is signed with this runner's own debug key, which changes every run.
       # These APKs are for testing only: installing a later one over it means uninstalling first, which deletes
-      # the bank in the app's storage. Signed releases are #84.
+      # the bank in the app's storage. Signed releases come from release.yml.
       - name: Publish
         run: dotnet publish src/Rhome.Android --configuration Release -p:AndroidSdkDirectory="$ANDROID_HOME"
 
