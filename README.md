@@ -58,6 +58,12 @@ adb install -r src/Rhome.Android/bin/Release/net10.0-android/publish/io.github.r
 
 CI builds the APK for every pull request and attaches it to every push to `main` (under the run's **Artifacts**). Those builds are signed with a throwaway debug key, so they're for testing only: installing a later one means uninstalling first, and uninstalling deletes the bank, which lives in the app's storage. With everything installed, `dotnet test --solution Rhome.slnx` builds the whole solution.
 
+### Releases
+
+To install rhome without building it, take the APK from the latest [release](https://github.com/rdennings/rhome/releases). Releases are pre-releases, not store releases. Every release is signed with rhome's release key, so a new one installs over the last and keeps your bank. A build from source or CI is signed with a different key, and Android won't install a release over it until it's uninstalled, which deletes the bank: back up `Android/data/io.github.rdennings.rhome/files` before switching.
+
+Pushing a tag like `v0.1.1` builds and publishes a release ([release.yml](.github/workflows/release.yml)). The tag sets the version name, and the version code is derived from it (`v1.2.3` → 1002003), so a higher tag always installs over a lower one. The workflow needs the `RHOME_KEYSTORE_BASE64` and `RHOME_KEYSTORE_PASSWORD` secrets, and checks the signature against the `RHOME_CERT_SHA256` variable. The maintainer can sign a local build with the release key by setting `RHOME_KEYSTORE` (the keystore's path) and `RHOME_KEYSTORE_PASSWORD` before `dotnet publish`.
+
 ### Command line
 
 `tools/Rhome.Cli` drives the core without a UI: look at a save, and move Pokémon between saves and the bank. Every change is shown first, then applied all at once, after backing up the save and the bank; `--dry-run` only shows it.

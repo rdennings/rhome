@@ -1,0 +1,118 @@
+name: Release
+
+# Pushing a tag like v0.1.0 builds the APK signed with rhome's release key and attaches it to a GitHub pre-release
+# (#84). Every release is signed with the same key, so each one installs over the last and the bank, which lives in
+# the app's storage, survives. Not a store release: the MVP is for Rodney and friends (PLAN.md §3).
+#
+# Needs two repository secrets: RHOME_KEYSTORE_BASE64 (the release keystore, base64) and RHOME_KEYSTORE_PASSWORD.
+# The keystore is decoded into the runner's temp folder, used for the one build, and deleted; it never goes into
+# logs, artifacts or the release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Signed APK pre-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # v1.2.3 → version name 1.2.3 and version code 1002003, so a higher tag always installs over a lower one.
+      - name: Version from the tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+            echo "::error::Tags must look like v1.2.3 (minor and patch up to 999), got $TAG"
+            exit 1
+          fi
+          major=$((10#${BASH_REMATCH[1]})) minor=$((10#${BASH_REMATCH[2]})) patch=$((10#${BASH_REMATCH[3]}))
+          echo "name=$major.$minor.$patch" >> "$GITHUB_OUTPUT"
+          echo "code=$((major * 1000000 + minor * 1000 + patch))" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Install the Android workload
+        run: dotnet workload install android
+
+      - name: Install the Android SDK parts the build needs
+        run: >
+          dotnet build src/Rhome.Android -t:InstallAndroidDependencies
+          -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=True
+
+      - name: Unpack the release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RHOME_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::The RHOME_KEYSTORE_BASE64 secret isn't set"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/rhome-release.keystore"
+
+      - name: Publish the signed APK
+        env:
+          RHOME_KEYSTORE: ${{ runner.temp }}/rhome-release.keystore
+          RHOME_KEYSTORE_PASSWORD: ${{ secrets.RHOME_KEYSTORE_PASSWORD }}
+        run: >
+          dotnet publish src/Rhome.Android --configuration Release -p:AndroidSdkDirectory="$ANDROID_HOME"
+          -p:ApplicationDisplayVersion=${{ steps.version.outputs.name }}
+          -p:ApplicationVersion=${{ steps.version.outputs.code }}
+
+      - name: Delete the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/rhome-release.keystore"
+
+      # Fails the release if the APK isn't signed with the release key (for example a missing or wrong secret).
+      - name: Check the signature
+        id: apk
+        env:
+          EXPECTED: ${{ vars.RHOME_CERT_SHA256 }}
+        run: |
+          apk="rhome-${{ steps.version.outputs.name }}.apk"
+          cp src/Rhome.Android/bin/Release/net10.0-android/publish/io.github.rdennings.rhome-Signed.apk "$apk"
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          cert=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          echo "Signed by $cert"
+          if [ -n "$EXPECTED" ] && [ "$cert" != "$EXPECTED" ]; then
+            echo "::error::The APK is signed by $cert, not the release key $EXPECTED"
+            exit 1
+          fi
+          echo "file=$apk" >> "$GITHUB_OUTPUT"
+          echo "cert=$cert" >> "$GITHUB_OUTPUT"
+
+      - name: Create the pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          APK: ${{ steps.apk.outputs.file }}
+          CERT: ${{ steps.apk.outputs.cert }}
+        run: |
+          cat > notes.md <<EOF
+          Android APK for arm64 handhelds and phones (Android 7+). Install it with \`adb install -r $APK\`, or open it on the device.
+
+          Every release is signed with the same key, so it installs over the last one and keeps your bank. A build from source or from a CI run is signed with a different key: Android refuses to install a release over it until it's uninstalled, and uninstalling deletes the bank. Back up \`Android/data/io.github.rdennings.rhome/files\` first.
+
+          Signing certificate SHA-256: \`$CERT\`
+          EOF
+          gh release create "$TAG" "$APK" --prerelease --title "rhome $TAG" --notes-file notes.md --generate-notes
